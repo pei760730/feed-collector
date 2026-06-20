@@ -24,6 +24,14 @@ const TRACKING_PARAMS = new Set([
   "s",
 ]);
 
+/** 行動版 → 桌面版 host 對照(正規化 dedup:同片行動/桌面版收斂成同一 clean_url)。 */
+const MOBILE_TO_DESKTOP: Record<string, string> = {
+  "m.tiktok.com": "www.tiktok.com",
+  "m.facebook.com": "www.facebook.com",
+  "m.youtube.com": "www.youtube.com",
+  "mobile.twitter.com": "twitter.com",
+};
+
 /** 已知短網址服務 host(供 ingest 決定要不要展開)。 */
 const SHORT_URL_HOSTS = new Set([
   "vm.tiktok.com",
@@ -65,6 +73,12 @@ export function cleanUrl(input: string): string {
   } catch {
     // 不是合法 URL → 取 ? 前段、去尾斜線
     return raw.split("?")[0]!.replace(/\/+$/, "");
+  }
+
+  // 行動版轉桌面版(在去追蹤參數前先正規化 host)
+  const desktopHost = MOBILE_TO_DESKTOP[url.hostname.toLowerCase()];
+  if (desktopHost) {
+    url.hostname = desktopHost;
   }
 
   // 移除追蹤參數
