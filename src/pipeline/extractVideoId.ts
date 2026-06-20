@@ -40,6 +40,7 @@ const PLATFORM_RULES: PlatformRule[] = [
   { platform: "Facebook", domains: ["facebook.com", "fb.watch", "fb.com"] },
   { platform: "X", domains: ["x.com", "twitter.com"] },
   { platform: "小紅書", domains: ["xiaohongshu.com", "xhslink.com"] },
+  { platform: "Threads", domains: ["threads.net", "threads.com"] },
 ];
 
 function detectPlatform(hostname: string): Platform {
@@ -73,6 +74,7 @@ const YOUTUBE_PATTERNS = [
   /youtu\.be\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
 ];
 const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([A-Za-z0-9]+)/];
+const THREADS_PATTERNS = [/\/post\/([A-Za-z0-9_-]+)/];
 
 /**
  * Facebook 抽 ID —— 四種形態依序試,各自帶不同前綴。
@@ -164,6 +166,10 @@ export function extractVideoId(
     case "小紅書": {
       const m = firstMatch(working, XHS_PATTERNS);
       return raw(m ? `xhs_${m}` : null, platform);
+    }
+    case "Threads": {
+      const m = firstMatch(working, THREADS_PATTERNS);
+      return raw(m ? `th_${m}` : null, platform);
     }
     default:
       return raw(null, "Other");

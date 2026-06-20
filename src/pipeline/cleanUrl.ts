@@ -17,6 +17,9 @@ const TRACKING_PARAMS = new Set([
   "li_fat_id",
   "igshid",
   "igsh",
+  // Threads / Meta 分享追蹤碼(不清會污染 dedup key,同片不同分享碼算成兩筆)
+  "xmt",
+  "slof",
   "tt_from",
   "s",
 ]);
