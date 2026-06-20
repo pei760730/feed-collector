@@ -18,7 +18,7 @@
 |---|---|
 | 「暫存區」欄位 / schema(SSOT) | `src/types.ts`:`StagingRow` / `STAGING_COLUMNS` / `STATUS` |
 | 抽第一個網址(不抓備註) | `src/pipeline/parse.ts` |
-| 清網址(追蹤參數 / hash / 尾斜線) | `src/pipeline/cleanUrl.ts` |
+| 清網址(追蹤參數 / hash / 尾斜線 / 行動版→桌面版 host 正規化) | `src/pipeline/cleanUrl.ts` |
 | **FB 轉址解開 + 判平台 + 抽 ID(核心)** | `src/pipeline/extractVideoId.ts` |
 | 去重 / 寫入介面 | `src/storage/Storage.ts` |
 | Google Sheets 實作 | `src/storage/googleSheets.ts` |
