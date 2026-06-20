@@ -57,3 +57,17 @@
 - 下游 worker 契約細節(它讀哪些 STATUS、寫回哪些欄位)待對齊,以免欄位衝突。改本服務寫入欄位前先確認。
 - 與姊妹專案 short-video-bot 的 ID 前綴**不同**(本支 `tt_` vs 另一支 `tiktok_`)。
   若未來兩支共用同一張表,需先統一前綴規則,否則去重失效。**目前各自獨立表 → 無衝突**。
+
+## 第六層:多 Agent 協作(Claude Code × Codex)
+
+單一真相在本檔;Codex 視角的細則見 [AGENTS.md](./AGENTS.md)。生態原則:**Codex 顧後端工程,Claude / Owner 顧設計判斷**。
+
+| 領地 | Claude Code / Owner | Codex |
+|---|---|---|
+| 分支前綴 | `claude/*` | `codex/*`(PR 標題 `[codex]`,draft PR → `gh pr ready` → Owner merge) |
+| 程式 | 設計判斷、跨 repo 協調、Sheet 操作 | `src/`(pipeline/storage/bot/utils/messages)、`tests/`、CI、Docker、依賴 |
+| 治理 / schema | `CLAUDE.md`、`src/types.ts` 7 欄契約、`ERROR_MSG`/`WORKER_RUN` 語意、迴圈架構 | 被要求才碰,且只改「描述工程行為」段落 |
+
+- **跨領地改動**:在 PR 說明原因、人工 review merge。揭露 ≠ 授權。
+- **Claude 自律**:不主動重構 Codex 領地;審 Codex PR 只驗不重寫。
+- **硬化目前刻意不上**:新小 repo 零碰撞史,不裝 of-content-engine 那套 branch-territory 鐵律 CI;反覆越界才硬化。
