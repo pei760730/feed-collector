@@ -31,6 +31,7 @@ Telegram 訊息
 | Facebook | `fbw_`/`fb_`/`fbs_` | `fb.watch`、`/reel|videos/`、`/share/[rvp]/`、`story_fbid`、`watch/?v=` |
 | X (Twitter) | `x_` | `/status/<id>` |
 | 小紅書 | `xhs_` | `/explore/`、`/discovery/item/` |
+| Threads | `th_` | `/post/<id>` |
 | Other / 抓不到 | `raw_<ts>` | → `unsupported` |
 
 FB 轉址:`l.facebook.com/l.php?u=…` 會先 `decodeURIComponent` 還原成真實網址,

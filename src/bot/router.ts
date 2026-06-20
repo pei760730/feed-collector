@@ -22,7 +22,7 @@ export function createBot(config: Config, storage: Storage): Telegraf {
 
   bot.start((ctx) => ctx.reply("貼一則含影片連結的訊息,我就幫你收進暫存區。"));
   bot.help((ctx) =>
-    ctx.reply("貼影片連結即收錄。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書。"),
+    ctx.reply("貼影片連結即收錄。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads。"),
   );
 
   bot.on(message("text"), async (ctx) => {
