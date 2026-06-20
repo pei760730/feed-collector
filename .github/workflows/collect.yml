@@ -1,12 +1,14 @@
 name: collect
 
 # 定時把 Telegram 這段時間囤的訊息撈乾、解析、寫進「暫存區」,然後結束。
-# Telegram 保留未領更新約 24h,只要間隔 < 24h 就不漏訊息。
-# private repo 有 Actions 免費分鐘上限(~2000 min/月):每小時一跑、每跑約 1–2 min,落在額度內。
+# Telegram 只保留未領更新約 24h —— 間隔必須「明顯 < 24h」才不漏:24h 整等於零安全邊際,
+# 任何一次 run 延遲/失敗就會讓超過 24h 的訊息被 Telegram 丟掉。
+# 取 6h(一天 4 跑):留 4 倍邊際,收訊息延遲最多約 6h(這是佇列,非即時,可接受)。
+# 成本:private repo Actions 免費 ~2000 min/月,6h×~2min ≈ 240 min/月,遠在額度內($0)。
 on:
   schedule:
-    - cron: "0 * * * *" # 每小時整點(UTC);收訊息延遲最多約 1 小時
-  workflow_dispatch: {} # 手動補跑
+    - cron: "0 */6 * * *" # 每 6 小時(UTC 0/6/12/18 點);收訊息延遲最多約 6 小時
+  workflow_dispatch: {} # 手動補跑(要立刻收就按這個)
 
 # 同時只跑一個,避免兩個 job 並行領 getUpdates 互搶(會漏 ack)。
 concurrency:

@@ -62,7 +62,6 @@ export interface Config {
   } | null;
   errorChatId: string;
   expandShortUrls: boolean;
-  tz: string;
   logLevel: string;
 }
 
@@ -126,7 +125,6 @@ export function loadConfig(): Config {
     google,
     errorChatId: optional("ERROR_CHAT_ID", ""),
     expandShortUrls: boolEnv("EXPAND_SHORT_URLS", false),
-    tz: optional("TZ", "Asia/Taipei"),
     logLevel: optional("LOG_LEVEL", "info"),
   };
   if (mode === "webhook" && !cached.webhook.domain) {

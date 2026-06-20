@@ -64,11 +64,13 @@ function firstMatch(url: string, patterns: RegExp[]): string | null {
 
 const IG_PATTERNS = [/\/(?:reel|reels|p)\/([A-Za-z0-9_-]+)/];
 const TIKTOK_PATTERNS = [/\/video\/(\d+)/];
+// 結尾 (?![A-Za-z0-9_-]) 右邊界:YouTube ID 恰 11 碼。沒邊界時非 11 碼(如 12 碼)
+// 會被「靜默吃前 11 碼」造出截斷的錯 ID;有邊界 → 非 11 碼整段不命中 → 正確落 raw_。
 const YOUTUBE_PATTERNS = [
-  /[?&]v=([A-Za-z0-9_-]{11})/,
-  /shorts\/([A-Za-z0-9_-]{11})/,
-  /embed\/([A-Za-z0-9_-]{11})/,
-  /youtu\.be\/([A-Za-z0-9_-]{11})/,
+  /[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
+  /shorts\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
+  /embed\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
+  /youtu\.be\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
 ];
 const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([A-Za-z0-9]+)/];
 

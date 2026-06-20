@@ -37,6 +37,22 @@ describe("extractVideoId — 各平台正常抽取", () => {
     );
   });
 
+  it("YouTube 11 碼後接 query 參數仍可抽", () => {
+    expect(extractVideoId("https://youtu.be/dQw4w9WgXcQ?si=abc").videoId).toBe("yt_dQw4w9WgXcQ");
+  });
+
+  it("YouTube 非 11 碼(12 碼)→ 不截斷,落 raw_(unsupported)", () => {
+    const r = extractVideoId("https://youtube.com/watch?v=AAAAAAAAAAAA", FIXED);
+    expect(r.unsupported).toBe(true);
+    expect(r.videoId).toBe("raw_1700000000000");
+  });
+
+  it("YouTube shorts 13 碼 → 不截斷,落 raw_", () => {
+    expect(
+      extractVideoId("https://www.youtube.com/shorts/ABCDEFGHIJKLM", FIXED).unsupported,
+    ).toBe(true);
+  });
+
   it("X /status/<id> → x_ 前綴", () => {
     const r = extractVideoId("https://x.com/someone/status/1690000000000000001");
     expect(r.platform).toBe("X");
