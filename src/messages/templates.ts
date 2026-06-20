@@ -11,7 +11,7 @@ export function formatErrorMsg(): string {
     "請貼一則含影片連結的訊息,例如:",
     "https://www.instagram.com/reel/CxYz123",
     "",
-    "支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書",
+    "支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads",
   ].join("\n");
 }
 
