@@ -24,4 +24,10 @@ describe("cleanUrl", () => {
   it("沒有協定也補上 https", () => {
     expect(cleanUrl("example.com/a")).toBe("https://example.com/a");
   });
+
+  it("清掉 Threads/Meta 分享追蹤碼(xmt/slof)", () => {
+    expect(
+      cleanUrl("https://www.threads.com/@u/post/DZwtc9Jk7Yf?xmt=AQG0abc&slof=1"),
+    ).toBe("https://www.threads.com/@u/post/DZwtc9Jk7Yf");
+  });
 });

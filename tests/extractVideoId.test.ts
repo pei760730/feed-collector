@@ -67,6 +67,19 @@ describe("extractVideoId — 各平台正常抽取", () => {
     expect(extractVideoId("https://www.xiaohongshu.com/explore/abc123").videoId).toBe("xhs_abc123");
   });
 
+  it("Threads /post/<id> → th_ 前綴", () => {
+    const r = extractVideoId("https://www.threads.com/@u/post/DZwtc9Jk7Yf");
+    expect(r.platform).toBe("Threads");
+    expect(r.videoId).toBe("th_DZwtc9Jk7Yf");
+    expect(r.unsupported).toBe(false);
+  });
+
+  it("threads.net 也判成 Threads", () => {
+    expect(extractVideoId("https://www.threads.net/@u/post/DZwtc9Jk7Yf").videoId).toBe(
+      "th_DZwtc9Jk7Yf",
+    );
+  });
+
   it("小紅書 /discovery/item/<id>", () => {
     expect(
       extractVideoId("https://www.xiaohongshu.com/discovery/item/64ab12cd").videoId,

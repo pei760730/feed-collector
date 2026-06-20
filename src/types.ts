@@ -16,6 +16,7 @@ export type Platform =
   | "Facebook"
   | "X"
   | "小紅書"
+  | "Threads"
   | "Other";
 
 /**
