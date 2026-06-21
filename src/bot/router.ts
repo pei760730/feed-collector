@@ -8,7 +8,13 @@ import type { Storage } from "../storage/Storage.js";
 import { runIngest } from "./handlers/ingest.js";
 import { logger } from "../utils/logger.js";
 
-export function createBot(config: Config, storage: Storage): Telegraf {
+/** drain 模式注入的鉤子;常駐版不傳(undefined)。 */
+export interface BotHooks {
+  /** 某筆寫入暫存區失敗時呼叫(drain 用來停在當前 offset、不 ack)。 */
+  onPersistError?: () => void;
+}
+
+export function createBot(config: Config, storage: Storage, hooks?: BotHooks): Telegraf {
   const bot = new Telegraf(config.telegramToken);
 
   const notifyError = async (text: string) => {
@@ -25,25 +31,40 @@ export function createBot(config: Config, storage: Storage): Telegraf {
     ctx.reply("貼影片連結即收錄。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads。"),
   );
 
-  bot.on(message("text"), async (ctx) => {
-    const text = ctx.message.text;
+  // 文字 / caption 共用的收集流程。已被上面 command 攔截的不會進來。
+  const handleIngestText = async (ctx: Context, text: string) => {
     // 未知指令(以 / 開頭但沒對到)→ 提示,不要當連結處理
     if (text.startsWith("/")) {
-      return ctx.reply("不認得這個指令。直接貼影片連結即可。");
+      await ctx.reply("不認得這個指令。直接貼影片連結即可。").catch(() => {});
+      return;
     }
     try {
       const result = await runIngest(
         { text },
-        { storage, expandShortUrls: config.expandShortUrls },
+        {
+          storage,
+          expandShortUrls: config.expandShortUrls,
+          onPersistError: hooks?.onPersistError,
+        },
       );
-      await ctx.reply(result.reply);
+      // reply 包 catch:使用者封鎖 bot / chat 失效時 reply 會丟例外,不能因此吞掉
+      // notifyError(寫表結果才是重點)。
+      await ctx.reply(result.reply).catch(() => {});
       if (result.error) await notifyError(result.error);
     } catch (err) {
       logger.error("ingest 例外", err);
-      await ctx.reply("❌ 處理時發生未預期錯誤。");
+      await ctx.reply("❌ 處理時發生未預期錯誤。").catch(() => {});
       await notifyError(`ingest 例外:${errText(err)}`);
     }
-  });
+  };
+
+  // 一般文字訊息 → 收集 pipeline。
+  bot.on(message("text"), (ctx) => handleIngestText(ctx, ctx.message.text));
+
+  // 媒體訊息的 caption → 同一條 pipeline。轉傳/分享影片貼文時連結常在 caption 而非 text,
+  // 只接 text 會讓這類訊息被靜默 ack 掉、不收錄也不回覆(漏資料)。caption 走 ingest:
+  // 有連結就收,沒連結則回「看不懂」提示,不再無聲丟失。
+  bot.on(message("caption"), (ctx) => handleIngestText(ctx, ctx.message.caption ?? ""));
 
   bot.catch((err, ctx: Context) => {
     logger.error(`Telegraf 未捕捉錯誤 (update ${ctx.updateType})`, err);
