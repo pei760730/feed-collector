@@ -6,6 +6,10 @@
  *
  * 不漏訊息:Telegram 保留未領取更新約 24h。只要 cron 間隔 < 24h,每次把待領更新領乾即可。
  * 失敗語意:中途崩潰沒 ack → 下次 cron 重領,storage 去重(VIDEO_ID)擋掉重複。at-least-once。
+ *
+ * 寫入失敗(可重試)= 紅線:runIngest 內 append 失敗會觸發 onPersistError → 旗標翻 true,
+ * 該筆「沒持久化」不可 ack。drain 停在當前 offset、結束本輪,留給下次 cron 重領(去重擋重複)。
+ * 絕不把沒寫成功的訊息默默 ack 掉(= 靜默丟資料,CLAUDE.md 紅線)。
  */
 import { createBot } from "./bot/router.js";
 import { loadConfig } from "./config.js";
@@ -32,28 +36,47 @@ async function main(): Promise<void> {
   }
   await storage.ensureHeader();
 
-  const bot = createBot(config, storage);
+  // persistFailed:某筆寫入暫存區失敗(可重試)的 side-channel 旗標。每筆處理前歸零,
+  // handleUpdate 內若觸發 onPersistError 會翻 true → 該筆「沒持久化」,不能 ack。
+  let persistFailed = false;
+  const bot = createBot(config, storage, {
+    onPersistError: () => {
+      persistFailed = true;
+    },
+  });
   bot.botInfo = await bot.telegram.getMe(); // handleUpdate 解析群組 /command@botname 需要
   await bot.telegram.deleteWebhook({ drop_pending_updates: false }); // 清殘留 webhook,保留待領更新
 
   let offset = 0;
   let processed = 0;
-  for (;;) {
+  let aborted = false;
+  outer: for (;;) {
     const updates = await bot.telegram.getUpdates(0, 100, offset, undefined);
     if (updates.length === 0) break;
     for (const u of updates) {
+      persistFailed = false;
       try {
         await bot.handleUpdate(u);
       } catch (err) {
-        logger.error(`處理 update ${u.update_id} 失敗(跳過,下次重領)`, err);
+        // 解析/路由層的非預期例外(非寫入失敗):重領也沒用,記錄後跳過、照常 ack。
+        logger.error(`處理 update ${u.update_id} 例外(跳過,下次不重領)`, err);
+      }
+      if (persistFailed) {
+        // 寫入失敗(可重試):不前進 offset、結束整個 drain。前面成功段下次 cron 第一次
+        // getUpdates(offset) 會 ack;這筆與之後的會被重領,靠 storage VIDEO_ID 去重。
+        // 這樣才真 at-least-once,不會把沒寫成功的訊息默默 ack 掉(CLAUDE.md 紅線)。
+        logger.error(`update ${u.update_id} 寫入暫存區失敗 → 停在此 offset,結束本輪讓下次 cron 重領`);
+        aborted = true;
+        break outer;
       }
       offset = u.update_id + 1; // 帶到下一輪 getUpdates 即 ack 本批
       processed += 1;
     }
   }
-  if (offset > 0) await bot.telegram.getUpdates(0, 1, offset, undefined); // 補 ack 最後一批
+  // 正常結束:迴圈終止前那次「空批」getUpdates(offset) 已 ack 最後一批,不需額外補 ack。
+  // 中止結束:刻意不 ack 未處理段(含失敗那筆),留給下次 cron 重領。
 
-  logger.info(`drain 完成:處理 ${processed} 筆更新`);
+  logger.info(`drain ${aborted ? "中止(寫入失敗,部分未處理)" : "完成"}:已處理 ${processed} 筆更新`);
 }
 
 main().catch((err) => {

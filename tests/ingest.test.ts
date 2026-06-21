@@ -68,6 +68,33 @@ describe("runIngest — 核心流程", () => {
     expect(r.error).toContain("boom");
   });
 
+  it("儲存失敗 → 觸發 onPersistError(drain 靠它停在 offset、不靜默丟資料)", async () => {
+    const failing: Storage = {
+      ensureHeader: async () => {},
+      findByVideoId: async () => null,
+      append: async () => {
+        throw new Error("sheet 寫入炸了");
+      },
+    };
+    let persistFailed = false;
+    const r = await runIngest(
+      { text: "https://www.instagram.com/reel/CxYz_-1" },
+      { ...deps(failing), onPersistError: () => (persistFailed = true) },
+    );
+    expect(persistFailed).toBe(true); // drain 收得到「沒持久化」訊號
+    expect(r.error).toBeDefined(); // 同時 contract 不變(仍回 error)
+  });
+
+  it("成功寫入 → 不觸發 onPersistError", async () => {
+    const s = new MemoryStorage();
+    let persistFailed = false;
+    await runIngest(
+      { text: "https://www.instagram.com/reel/CxYz_-1" },
+      { ...deps(s), onPersistError: () => (persistFailed = true) },
+    );
+    expect(persistFailed).toBe(false);
+  });
+
   it("FB 轉址 → 還原內層平台並寫入", async () => {
     const s = new MemoryStorage();
     const inner = "https://www.instagram.com/reel/CxYz_-1";

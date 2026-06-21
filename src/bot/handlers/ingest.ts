@@ -40,6 +40,12 @@ export interface IngestDeps {
   storage: Storage;
   expandShortUrls: boolean;
   now?: () => number;
+  /**
+   * 寫入暫存區失敗(可重試)時呼叫 —— 給 drain 模式用的 side-channel。
+   * runIngest 仍照常回 {reply, error}(常駐版/測試契約不變);drain 靠這個 callback
+   * 得知「這筆沒持久化」,好停在當前 offset、不 ack、下次 cron 重領,避免靜默丟資料。
+   */
+  onPersistError?: () => void;
 }
 
 export interface IngestResult {
@@ -96,6 +102,8 @@ export async function runIngest(
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       logger.error("寫入暫存區失敗", err);
+      // 通知 drain:這筆沒寫成功(可重試)。常駐版沒給 callback → no-op,行為不變。
+      deps.onPersistError?.();
       return {
         reply: saveErrorMsg(detail),
         error: `ingest 寫入失敗:${detail}｜url=${row.CLEAN_URL}`,
