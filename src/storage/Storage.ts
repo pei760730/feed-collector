@@ -17,6 +17,12 @@ export interface Storage {
   /** 依 VIDEO_ID 找重複,回第一筆 match(含列號),無則 null。 */
   findByVideoId(videoId: string): Promise<DuplicateHit | null>;
 
+  /**
+   * 依 CLEAN_URL 檢查是否已存在於總表/待拍池。
+   * 只做唯讀查詢;cleanUrl 會由實作 trim,空字串視為無命中。
+   */
+  findApprovedByUrl(cleanUrl: string): Promise<boolean>;
+
   /** append 一列。 */
   append(row: StagingRow): Promise<void>;
 }
