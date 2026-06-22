@@ -72,6 +72,30 @@ function textMessage(text: string): Update {
   } as unknown as Update;
 }
 
+function commandMessage(cmd: string): Update {
+  return {
+    update_id: 3,
+    message: {
+      message_id: 12,
+      date: 0,
+      chat: { id: 123, type: "private", first_name: "Pei" },
+      from: { id: 9, is_bot: false, first_name: "Pei" },
+      text: cmd,
+      entities: [{ type: "bot_command", offset: 0, length: cmd.length }],
+    },
+  } as unknown as Update;
+}
+
+describe("router /stats routing", () => {
+  it("/stats → 走 runStats 並回覆(空暫存區回空的提示)", async () => {
+    const bot = makeBot(new MemoryStorage());
+
+    await bot.handleUpdate(commandMessage("/stats"));
+
+    expect(sent.some((t) => t.includes("空的"))).toBe(true);
+  });
+});
+
 describe("router caption routing(#2 媒體 caption 不再靜默丟失)", () => {
   it("媒體 caption 裡的連結 → 走 ingest 寫入", async () => {
     const storage = new MemoryStorage();
@@ -104,6 +128,14 @@ describe("router onPersistError 透传(#1 drain 靠它停在 offset)", () => {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
       findApprovedByUrl: async () => false,
+      stats: async () => ({
+        total: 0,
+        byPlatform: {},
+        byStatus: {},
+        addedThisWeek: 0,
+        addedThisMonth: 0,
+        recent: [],
+      }),
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },

@@ -6,6 +6,7 @@ import { message } from "telegraf/filters";
 import type { Config } from "../config.js";
 import type { Storage } from "../storage/Storage.js";
 import { runIngest } from "./handlers/ingest.js";
+import { runStats } from "./handlers/stats.js";
 import { logger } from "../utils/logger.js";
 
 /** drain 模式注入的鉤子;常駐版不傳(undefined)。 */
@@ -26,16 +27,31 @@ export function createBot(config: Config, storage: Storage, hooks?: BotHooks): T
     }
   };
 
-  bot.start((ctx) => ctx.reply("貼一則含影片連結的訊息,我就幫你收進暫存區。"));
-  bot.help((ctx) =>
-    ctx.reply("貼影片連結即收錄。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads。"),
+  bot.start((ctx) =>
+    ctx.reply("貼一則含影片連結的訊息,我就幫你收進暫存區。指令:/stats 看統計。"),
   );
+  bot.help((ctx) =>
+    ctx.reply(
+      "貼影片連結即收錄;/stats 看暫存區統計。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads。",
+    ),
+  );
+
+  // /stats —— 暫存區彙總。註冊在 message handler 之前,/stats 才會被指令攔截。
+  bot.command("stats", async (ctx) => {
+    try {
+      await ctx.reply(await runStats({ storage })).catch(() => {});
+    } catch (err) {
+      logger.error("/stats 失敗", err);
+      await ctx.reply("❌ 取統計失敗。").catch(() => {});
+      await notifyError(`/stats 失敗:${errText(err)}`);
+    }
+  });
 
   // 文字 / caption 共用的收集流程。已被上面 command 攔截的不會進來。
   const handleIngestText = async (ctx: Context, text: string) => {
     // 未知指令(以 / 開頭但沒對到)→ 提示,不要當連結處理
     if (text.startsWith("/")) {
-      await ctx.reply("不認得這個指令。直接貼影片連結即可。").catch(() => {});
+      await ctx.reply("不認得這個指令。可用:/stats,或直接貼影片連結。").catch(() => {});
       return;
     }
     try {

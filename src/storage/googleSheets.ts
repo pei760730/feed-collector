@@ -6,9 +6,10 @@
  * - ERROR_MSG / WORKER_RUN 留給下游 worker;本服務 append 時填空字串、不覆寫既有列。
  */
 import { google, type sheets_v4 } from "googleapis";
-import type { Storage, DuplicateHit } from "./Storage.js";
+import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
+import { computeStats } from "./computeStats.js";
 import { logger } from "../utils/logger.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
@@ -212,6 +213,11 @@ export class GoogleSheetsStorage implements Storage {
       logger.warn(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄`, err);
       return false;
     }
+  }
+
+  async stats(opts: { recentLimit: number; nowMs: number }): Promise<StatsSummary> {
+    const rows = (await this.rawRows()).map(({ cells }) => this.valuesToRow(cells));
+    return computeStats(rows, opts);
   }
 
   async append(row: StagingRow): Promise<void> {
