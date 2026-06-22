@@ -24,11 +24,20 @@ describe("runIngest — 核心流程", () => {
     await runIngest({ text: "https://www.tiktok.com/@u/video/7234567890" }, deps(s));
     const r = await runIngest({ text: "https://www.tiktok.com/@u/video/7234567890" }, deps(s));
     expect(r.reply).toContain("已經存在");
+    expect(r.reply).toContain("暫存區");
     expect(s.all()).toHaveLength(1);
   });
 
+  it("總表已存在 CLEAN_URL → 回已存在總表,且不寫入暫存區", async () => {
+    const url = "https://www.instagram.com/reel/CxYz_-1";
+    const s = new MemoryStorage([], { approvedUrls: [` ${url} `] });
+    const r = await runIngest({ text: url }, deps(s));
+    expect(r.reply).toContain("總表/待拍池");
+    expect(s.all()).toHaveLength(0);
+  });
+
   it("無法解析(Other)→ unsupported 但仍寫入(不查重)", async () => {
-    const s = new MemoryStorage();
+    const s = new MemoryStorage([], { approvedUrls: ["https://example.com/foo"] });
     const r = await runIngest({ text: "https://example.com/foo" }, deps(s));
     expect(r.reply).toContain("unsupported");
     const rows = s.all();
@@ -45,6 +54,17 @@ describe("runIngest — 核心流程", () => {
     expect(s.all()).toHaveLength(2);
   });
 
+  it("總表 URL 欄不可用 → fail-soft,照常 append", async () => {
+    const url = "https://www.instagram.com/reel/CxYz_-1";
+    const s = new MemoryStorage([], {
+      approvedUrls: [url],
+      approvedUrlColumnAvailable: false,
+    });
+    const r = await runIngest({ text: url }, deps(s));
+    expect(r.reply).toContain("待處理");
+    expect(s.all()).toHaveLength(1);
+  });
+
   it("沒有網址 → 格式錯誤提示,不寫入", async () => {
     const s = new MemoryStorage();
     const r = await runIngest({ text: "隨便打字" }, deps(s));
@@ -56,6 +76,7 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("boom");
       },
@@ -72,6 +93,7 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },

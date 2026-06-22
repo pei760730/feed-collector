@@ -103,6 +103,7 @@ describe("router onPersistError 透传(#1 drain 靠它停在 offset)", () => {
     return {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },

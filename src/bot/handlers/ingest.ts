@@ -21,6 +21,7 @@ import {
   savedMsg,
   unsupportedMsg,
   duplicateMsg,
+  approvedDuplicateMsg,
   saveErrorMsg,
 } from "../../messages/templates.js";
 
@@ -95,6 +96,9 @@ export async function runIngest(
     if (!ex.unsupported) {
       const hit = await deps.storage.findByVideoId(ex.videoId);
       if (hit) return { reply: duplicateMsg(hit.row) };
+
+      const approvedHit = await deps.storage.findApprovedByUrl(row.CLEAN_URL);
+      if (approvedHit) return { reply: approvedDuplicateMsg(row.CLEAN_URL) };
     }
 
     try {
