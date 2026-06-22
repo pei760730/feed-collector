@@ -6,7 +6,7 @@
  *
  *   parse → clean → extract(含 FB 轉址)→
  *     raw_*(unsupported) → 直接存(不查重)
- *     可解析       → 查重 → 重複:跳過不存 / 新的:pending_review 存
+ *     可解析       → 暫存區 VIDEO_ID 查重 → 總表 CLEAN_URL 查重 → 重複:跳過不存 / 新的:pending_review 存
  */
 import { parseMessage, NoUrlError } from "../../pipeline/parse.js";
 import { cleanUrl, hasShortHost } from "../../pipeline/cleanUrl.js";
@@ -21,6 +21,7 @@ import {
   savedMsg,
   unsupportedMsg,
   duplicateMsg,
+  approvedDuplicateMsg,
   saveErrorMsg,
 } from "../../messages/templates.js";
 
@@ -95,6 +96,9 @@ export async function runIngest(
     if (!ex.unsupported) {
       const hit = await deps.storage.findByVideoId(ex.videoId);
       if (hit) return { reply: duplicateMsg(hit.row) };
+
+      const approvedHit = await deps.storage.findApprovedByUrl(row.CLEAN_URL);
+      if (approvedHit) return { reply: approvedDuplicateMsg(row.CLEAN_URL) };
     }
 
     try {
