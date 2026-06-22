@@ -10,6 +10,17 @@ export interface DuplicateHit {
   rowNumber: number;
 }
 
+/** /stats 用的暫存區彙總(唯讀)。 */
+export interface StatsSummary {
+  total: number;
+  byPlatform: Record<string, number>;
+  byStatus: Record<string, number>;
+  addedThisWeek: number;
+  addedThisMonth: number;
+  /** 最近 N 筆(由新到舊)。 */
+  recent: StagingRow[];
+}
+
 export interface Storage {
   /** 確保分頁 + 表頭存在且與 schema 一致(冪等)。 */
   ensureHeader(): Promise<void>;
@@ -26,4 +37,7 @@ export interface Storage {
 
   /** append 一列。 */
   append(row: StagingRow): Promise<void>;
+
+  /** 讀全部暫存區列彙總成統計(/stats 用,唯讀)。 */
+  stats(opts: { recentLimit: number; nowMs: number }): Promise<StatsSummary>;
 }

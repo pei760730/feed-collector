@@ -1,9 +1,10 @@
 /**
  * 記憶體版 Storage —— 給單元測試與本機 dry-run 用,不碰網路。
  */
-import type { Storage, DuplicateHit } from "./Storage.js";
+import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
+import { computeStats } from "./computeStats.js";
 
 export interface MemoryStorageOptions {
   approvedUrls?: Iterable<string>;
@@ -45,6 +46,10 @@ export class MemoryStorage implements Storage {
 
   async append(row: StagingRow): Promise<void> {
     this.rows.push(row);
+  }
+
+  async stats(opts: { recentLimit: number; nowMs: number }): Promise<StatsSummary> {
+    return computeStats(this.rows, opts);
   }
 
   /** 測試輔助:讀全部列。 */

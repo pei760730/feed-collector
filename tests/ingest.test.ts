@@ -77,6 +77,14 @@ describe("runIngest — 核心流程", () => {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
       findApprovedByUrl: async () => false,
+      stats: async () => ({
+        total: 0,
+        byPlatform: {},
+        byStatus: {},
+        addedThisWeek: 0,
+        addedThisMonth: 0,
+        recent: [],
+      }),
       append: async () => {
         throw new Error("boom");
       },
@@ -94,6 +102,14 @@ describe("runIngest — 核心流程", () => {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
       findApprovedByUrl: async () => false,
+      stats: async () => ({
+        total: 0,
+        byPlatform: {},
+        byStatus: {},
+        addedThisWeek: 0,
+        addedThisMonth: 0,
+        recent: [],
+      }),
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },
