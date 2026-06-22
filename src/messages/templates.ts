@@ -38,9 +38,16 @@ export function unsupportedMsg(row: StagingRow): string {
 
 export function duplicateMsg(existing: StagingRow): string {
   return [
-    "♻️ 這支已經存在(Queue/素材庫),跳過,沒有重複寫入。",
+    "♻️ 這支已經存在(暫存區),跳過,沒有重複寫入。",
     `VIDEO_ID:${existing.VIDEO_ID}`,
     `首次日期:${existing.DATE}`,
+  ].join("\n");
+}
+
+export function approvedDuplicateMsg(cleanUrl: string): string {
+  return [
+    "♻️ 這支已經存在(總表/待拍池),跳過,沒有寫回暫存區。",
+    `連結:${cleanUrl}`,
   ].join("\n");
 }
 
