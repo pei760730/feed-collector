@@ -19,22 +19,39 @@ describe("runIngest — 核心流程", () => {
     expect(rows[0]!.WORKER_RUN).toBe("");
   });
 
+  it("總表已有相同 CLEAN_URL → 回已存在(總表/待拍池),且不寫回暫存區", async () => {
+    const url = "https://www.instagram.com/reel/CxYz_-1";
+    const s = new MemoryStorage([], { approvedUrls: [url] });
+    const r = await runIngest({ text: url }, deps(s));
+    expect(r.reply).toContain("總表/待拍池");
+    expect(s.all()).toHaveLength(0);
+  });
+
   it("重複連結 → 回已存在,且不重複寫入", async () => {
     const s = new MemoryStorage();
     await runIngest({ text: "https://www.tiktok.com/@u/video/7234567890" }, deps(s));
     const r = await runIngest({ text: "https://www.tiktok.com/@u/video/7234567890" }, deps(s));
     expect(r.reply).toContain("已經存在");
+    expect(r.reply).toContain("暫存區");
     expect(s.all()).toHaveLength(1);
   });
 
   it("無法解析(Other)→ unsupported 但仍寫入(不查重)", async () => {
-    const s = new MemoryStorage();
+    const s = new MemoryStorage([], { approvedUrls: ["https://example.com/foo"] });
     const r = await runIngest({ text: "https://example.com/foo" }, deps(s));
     expect(r.reply).toContain("unsupported");
     const rows = s.all();
     expect(rows).toHaveLength(1);
     expect(rows[0]!.STATUS).toBe("unsupported");
     expect(rows[0]!.VIDEO_ID).toBe("raw_1700000000000");
+  });
+
+  it("總表欄位不可用時 fail-soft → 不丟錯,照常 append", async () => {
+    const url = "https://www.instagram.com/reel/CxYz_-1";
+    const s = new MemoryStorage([], { approvedUrls: [url], approvedLookupAvailable: false });
+    const r = await runIngest({ text: url }, deps(s));
+    expect(r.reply).toContain("待處理");
+    expect(s.all()).toHaveLength(1);
   });
 
   it("unsupported 即使 VIDEO_ID 相同也不去重(各自存)", async () => {
@@ -56,6 +73,7 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("boom");
       },
@@ -72,6 +90,7 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },
