@@ -5,11 +5,22 @@ import type { Storage, DuplicateHit } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
 
+export interface MemoryStorageOptions {
+  approvedUrls?: Iterable<string>;
+  approvedLookupAvailable?: boolean;
+}
+
 export class MemoryStorage implements Storage {
   private rows: StagingRow[] = [];
+  private approvedUrls: Set<string>;
+  private approvedLookupAvailable: boolean;
 
-  constructor(seed: StagingRow[] = []) {
+  constructor(seed: StagingRow[] = [], opts: MemoryStorageOptions = {}) {
     this.rows = [...seed];
+    this.approvedUrls = new Set(
+      [...(opts.approvedUrls ?? [])].map((url) => url.trim()).filter((url) => url !== ""),
+    );
+    this.approvedLookupAvailable = opts.approvedLookupAvailable ?? true;
   }
 
   async ensureHeader(): Promise<void> {
@@ -26,8 +37,19 @@ export class MemoryStorage implements Storage {
     return null;
   }
 
+  async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
+    if (!this.approvedLookupAvailable) return false;
+    const key = cleanUrl.trim();
+    return key !== "" && this.approvedUrls.has(key);
+  }
+
   async append(row: StagingRow): Promise<void> {
     this.rows.push(row);
+  }
+
+  addApprovedUrl(cleanUrl: string): void {
+    const key = cleanUrl.trim();
+    if (key) this.approvedUrls.add(key);
   }
 
   /** 測試輔助:讀全部列。 */
