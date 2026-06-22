@@ -42,4 +42,28 @@ describe("cleanUrl", () => {
       cleanUrl("https://www.threads.com/@u/post/DZwtc9Jk7Yf?xmt=AQG0abc&slof=1"),
     ).toBe("https://www.threads.com/@u/post/DZwtc9Jk7Yf");
   });
+
+  it("清掉 Facebook 分享 / 轉址追蹤碼(mibextid/rdid),保留 v", () => {
+    expect(
+      cleanUrl("https://www.facebook.com/share/v/1Ak36Nk2kS/?mibextid=wwXIfr"),
+    ).toBe("https://www.facebook.com/share/v/1Ak36Nk2kS");
+    expect(
+      cleanUrl("https://www.facebook.com/watch/?v=880138511189246&rdid=abc"),
+    ).toBe("https://www.facebook.com/watch?v=880138511189246");
+  });
+
+  it("x/twitter 的 t 是追蹤碼 → 砍(連同 s)", () => {
+    expect(cleanUrl("https://x.com/u/status/123?s=20&t=abc")).toBe(
+      "https://x.com/u/status/123",
+    );
+    expect(cleanUrl("https://x.com/u/status/123?t=abc")).toBe(
+      "https://x.com/u/status/123",
+    );
+  });
+
+  it("YouTube 的 t 是起始秒數 → 保留(不被當追蹤碼砍)", () => {
+    expect(cleanUrl("https://www.youtube.com/watch?v=XYZ&t=30s")).toBe(
+      "https://www.youtube.com/watch?v=XYZ&t=30s",
+    );
+  });
 });
