@@ -22,6 +22,9 @@ const TRACKING_PARAMS = new Set([
   "slof",
   "tt_from",
   "s",
+  // Facebook 分享 / 轉址追蹤碼(任何 host 砍都安全,FB 專用)
+  "mibextid",
+  "rdid",
 ]);
 
 /** 行動版 → 桌面版 host 對照(正規化 dedup:同片行動/桌面版收斂成同一 clean_url)。 */
@@ -79,6 +82,13 @@ export function cleanUrl(input: string): string {
   const desktopHost = MOBILE_TO_DESKTOP[url.hostname.toLowerCase()];
   if (desktopHost) {
     url.hostname = desktopHost;
+  }
+
+  // twitter/x 的 `t` 是分享追蹤碼;但 `t` 在 YouTube 是影片起始秒數(?t=30s),
+  // 故僅對 x/twitter host 砍,不放進全域 TRACKING_PARAMS(避免弄丟 YT 時間戳)。
+  const host = url.hostname.toLowerCase();
+  if (host === "x.com" || host === "twitter.com") {
+    url.searchParams.delete("t");
   }
 
   // 移除追蹤參數
