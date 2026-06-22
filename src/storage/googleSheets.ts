@@ -12,11 +12,13 @@ import { STAGING_COLUMNS } from "../types.js";
 import { logger } from "../utils/logger.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+const PROD_URL_HEADER = "影片連結";
 
 export interface GoogleSheetsOptions {
   credentials: { client_email: string; private_key: string };
   sheetId: string;
   sheetName: string;
+  prodSheetName: string;
 }
 
 /** 0-based 欄索引 → A1 欄字母(0→A, 25→Z, 26→AA)。 */
@@ -52,14 +54,20 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Pro
   throw lastErr;
 }
 
+function errText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export class GoogleSheetsStorage implements Storage {
   private sheets: sheets_v4.Sheets;
   private readonly sheetId: string;
   private readonly sheetName: string;
+  private readonly prodSheetName: string;
 
   constructor(opts: GoogleSheetsOptions) {
     this.sheetId = opts.sheetId;
     this.sheetName = opts.sheetName;
+    this.prodSheetName = opts.prodSheetName;
     const auth = new google.auth.JWT({
       email: opts.credentials.client_email,
       key: opts.credentials.private_key,
@@ -69,8 +77,8 @@ export class GoogleSheetsStorage implements Storage {
   }
 
   /** `'暫存區'!A1:G1` 之類的 range,中文分頁名要加引號。 */
-  private range(a1: string): string {
-    return `'${this.sheetName}'!${a1}`;
+  private range(a1: string, sheetName = this.sheetName): string {
+    return `'${sheetName.replace(/'/g, "''")}'!${a1}`;
   }
 
   private rowToValues(row: StagingRow): string[] {
@@ -164,6 +172,41 @@ export class GoogleSheetsStorage implements Storage {
       if (row.VIDEO_ID.trim() === key) return { row, rowNumber };
     }
     return null;
+  }
+
+  async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
+    const key = cleanUrl.trim();
+    if (!key) return false;
+
+    try {
+      const headerRes = await withRetry("讀總表表頭", () =>
+        this.sheets.spreadsheets.values.get({
+          spreadsheetId: this.sheetId,
+          range: this.range("1:1", this.prodSheetName),
+        }),
+      );
+      const header = headerRes.data.values?.[0] ?? [];
+      const urlColIndex = header.findIndex(
+        (cell) => String(cell ?? "").trim() === PROD_URL_HEADER,
+      );
+      if (urlColIndex < 0) {
+        logger.warn(`總表去重略過:找不到「${PROD_URL_HEADER}」欄(${this.prodSheetName})`);
+        return false;
+      }
+
+      const col = colLetter(urlColIndex);
+      const dataRes = await withRetry("讀總表影片連結", () =>
+        this.sheets.spreadsheets.values.get({
+          spreadsheetId: this.sheetId,
+          range: this.range(`${col}2:${col}`, this.prodSheetName),
+        }),
+      );
+      const values = dataRes.data.values ?? [];
+      return values.some((row) => String(row?.[0] ?? "").trim() === key);
+    } catch (err) {
+      logger.warn(`總表去重略過:${this.prodSheetName} 讀取失敗:${errText(err)}`);
+      return false;
+    }
   }
 
   async append(row: StagingRow): Promise<void> {
