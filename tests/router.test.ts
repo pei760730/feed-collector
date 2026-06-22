@@ -98,11 +98,12 @@ describe("router caption routing(#2 媒體 caption 不再靜默丟失)", () => {
   });
 });
 
-describe("router onPersistError 透传(#1 drain 靠它停在 offset)", () => {
+describe("router onPersistError 透傳(#1 drain 靠它停在 offset)", () => {
   function failingStorage(): Storage {
     return {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      findApprovedByUrl: async () => false,
       append: async () => {
         throw new Error("sheet 寫入炸了");
       },
