@@ -59,6 +59,7 @@ export interface Config {
     credentials: { client_email: string; private_key: string };
     sheetId: string;
     stagingSheetName: string;
+    prodSheetName: string;
   } | null;
   errorChatId: string;
   expandShortUrls: boolean;
@@ -112,6 +113,7 @@ export function loadConfig(): Config {
           credentials: loadGoogleCredentials(),
           sheetId: required("GOOGLE_SHEET_ID"),
           stagingSheetName: optional("STAGING_SHEET_NAME", "暫存區"),
+          prodSheetName: optional("PROD_SHEET_NAME", "總表"),
         };
   cached = {
     telegramToken: required("TELEGRAM_BOT_TOKEN"),

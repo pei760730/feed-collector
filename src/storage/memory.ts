@@ -5,11 +5,22 @@ import type { Storage, DuplicateHit } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
 
+export interface MemoryStorageOptions {
+  approvedUrls?: Iterable<string>;
+  approvedUrlColumnAvailable?: boolean;
+}
+
 export class MemoryStorage implements Storage {
   private rows: StagingRow[] = [];
+  private readonly approvedUrls: Set<string>;
+  private readonly approvedUrlColumnAvailable: boolean;
 
-  constructor(seed: StagingRow[] = []) {
+  constructor(seed: StagingRow[] = [], opts: MemoryStorageOptions = {}) {
     this.rows = [...seed];
+    this.approvedUrls = new Set(
+      [...(opts.approvedUrls ?? [])].map((url) => url.trim()).filter((url) => url !== ""),
+    );
+    this.approvedUrlColumnAvailable = opts.approvedUrlColumnAvailable ?? true;
   }
 
   async ensureHeader(): Promise<void> {
@@ -24,6 +35,12 @@ export class MemoryStorage implements Storage {
       if (r.VIDEO_ID.trim() === key) return { row: r, rowNumber: i + 2 };
     }
     return null;
+  }
+
+  async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
+    const key = cleanUrl.trim();
+    if (!key || !this.approvedUrlColumnAvailable) return false;
+    return this.approvedUrls.has(key);
   }
 
   async append(row: StagingRow): Promise<void> {
