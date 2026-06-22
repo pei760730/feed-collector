@@ -32,6 +32,7 @@ async function main(): Promise<void> {
       credentials: config.google.credentials,
       sheetId: config.google.sheetId,
       sheetName: config.google.stagingSheetName,
+      prodSheetName: config.google.prodSheetName,
     });
   }
   await storage.ensureHeader();
