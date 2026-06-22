@@ -66,4 +66,10 @@ describe("cleanUrl", () => {
       "https://www.youtube.com/watch?v=XYZ&t=30s",
     );
   });
+
+  it("mobile.twitter.com 正規化成 twitter.com 後仍砍 t(ordering 防回歸)", () => {
+    expect(cleanUrl("https://mobile.twitter.com/u/status/123?t=abc")).toBe(
+      "https://twitter.com/u/status/123",
+    );
+  });
 });
