@@ -1,6 +1,6 @@
-# CLAUDE.md — OF DOG 協作規則
+# CLAUDE.md — feed-collector 協作規則
 
-> 接手這個 repo(含 AI)先讀這份。OF DOG = Telegram 短影音收集/佇列 bot,取代舊 n8n「OF DOG」流程。
+> 接手這個 repo(含 AI)先讀這份。feed-collector = Telegram 短影音收集/佇列 bot,取代舊 n8n「feed-collector」流程。
 > 貼影片連結 → 解析→清理→FB 轉址解開→判平台→抽 video ID→去重→寫 Google Sheet「暫存區」,
 > 標 `pending_review` / `unsupported` 狀態供**下游 worker** 接手。
 

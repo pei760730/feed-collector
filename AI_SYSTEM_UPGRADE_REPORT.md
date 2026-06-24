@@ -1,4 +1,4 @@
-# AI System Upgrade Report — OF-DOG
+# AI System Upgrade Report — feed-collector
 
 > 每次 Sleep Mode / 系統穩定化跑一輪,附加一個 `## Run` 區段,不覆蓋舊紀錄。
 > 這份是給下一個 agent(Claude / Codex)防錯用的事實基線,不是作文。
@@ -10,14 +10,14 @@
 ### Base
 - Branch: `main`
 - HEAD: `d1094c8` (fix: cleanUrl 行動版 host 正規化 (#3))
-- Repo root: `C:/Users/user/projects/OF-DOG`
+- Repo root: `C:/Users/user/projects/feed-collector`
 - Time: 2026-06-21 ~02:10 (Asia/Taipei)
 - Working tree before: **clean**, synced with `origin/main`
 - Working tree after: 2 檔修改(本輪,未 commit)—— `CLAUDE.md`、`AI_SYSTEM_UPGRADE_REPORT.md`(本檔,新增)
 - Pre-existing modified/untracked: 無
 
 ### Project snapshot
-- Type: Telegram 短影音收集/佇列 bot(取代 n8n「OF DOG」)
+- Type: Telegram 短影音收集/佇列 bot(取代 n8n「feed-collector」)
 - Language: Node.js + TypeScript(ESM, NodeNext)
 - Package manager / build: npm(package-lock)/ `tsc`
 - Entrypoints: `src/index.ts`(polling/webhook 常駐)、`src/drain.ts`(Actions cron 一次性撈乾)
@@ -68,7 +68,7 @@
 - CLAUDE.md cleanUrl 說明對齊 PR#3:見上方 diff;doc-only,test/build 仍綠。
 
 ### Existing issues not fixed
-- 無 code 級問題。OF-DOG 本身已過兩輪獨立 review(commit `635e99f`)+ post-merge 對齊,狀態良好。
+- 無 code 級問題。feed-collector 本身已過兩輪獨立 review(commit `635e99f`)+ post-merge 對齊,狀態良好。
 
 ### Remaining risks
 - **執行語意 trade-off(非 bug)**:預設部署 = 每 6h cron drain → 收訊息+回覆最多延遲 ~6h(非即時)。要秒回需雲端 VM 常駐 polling(本機 Docker/WSL2 會 `Premature close`)。已記於 `CLAUDE.md`/`README.md`。
@@ -83,7 +83,7 @@
 ### Recommended next actions
 1. (Owner / 下個 session)把本輪 2 個 doc 變更 commit(`docs: align CLAUDE.md + add upgrade report`)—— 安全。
 2. 連網時評估 bump CI actions 版本(消 Node 20 警告)。
-3. of-content-engine 那邊:接 OF-DOG↔engine 介面 + 清「暫存區」舊 n8n 髒列(另開 session,已有交辦 prompt)。
+3. of-content-engine 那邊:接 feed-collector↔engine 介面 + 清「暫存區」舊 n8n 髒列(另開 session,已有交辦 prompt)。
 
 ### Safe to commit?
 - Yes:本輪只動 `CLAUDE.md`(doc 真相對齊)+ 新增本報告,doc-only、test/build 全綠、零行為變更。

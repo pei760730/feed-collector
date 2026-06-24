@@ -1,7 +1,7 @@
 {
-  "name": "of-dog",
+  "name": "feed-collector",
   "version": "0.1.0",
-  "description": "OF DOG —— Telegram 短影音收集/佇列 bot(取代 n8n 版):解析→清理→FB 轉址解開→判平台→抽 video ID→去重→寫 Google Sheet「暫存區」(pending_review / unsupported 狀態流,供下游 worker 接手)",
+  "description": "feed-collector —— Telegram 短影音收集/佇列 bot(取代 n8n 版):解析→清理→FB 轉址解開→判平台→抽 video ID→去重→寫 Google Sheet「暫存區」(pending_review / unsupported 狀態流,供下游 worker 接手)",
   "type": "module",
   "private": true,
   "engines": {

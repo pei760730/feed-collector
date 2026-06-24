@@ -1,5 +1,5 @@
 services:
-  of-dog:
+  feed-collector:
     build: .
     restart: unless-stopped
     env_file: .env

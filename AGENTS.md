@@ -1,7 +1,7 @@
-# AGENTS.md — Codex CLI 行為規則(OF-DOG)
+# AGENTS.md — Codex CLI 行為規則(feed-collector)
 
 > 這份是給 **Codex** 的。repo 的權威治理檔是 **[CLAUDE.md](./CLAUDE.md)**(紅線、資料地圖、技術不變式)。Codex 動工前先讀 CLAUDE.md。
-> OF-DOG = Telegram 短影音收集/佇列 bot,解析連結 → 寫 Google Sheet「暫存區」,以 `pending_review`/`unsupported` 狀態流交給下游 worker(`of-content-engine`)接手。
+> feed-collector = Telegram 短影音收集/佇列 bot,解析連結 → 寫 Google Sheet「暫存區」,以 `pending_review`/`unsupported` 狀態流交給下游 worker(`of-content-engine`)接手。
 >
 > **生態原則**:整個 OF 線的分工是「**Codex 顧後端工程,Claude / Owner 顧設計判斷**」。本 repo 照此切;下游 `of-content-engine` 有自己更嚴的領地定義(那邊已上 pytest 鐵律守衛)。
 
@@ -19,7 +19,7 @@ Codex 是這個 repo 的**工程管線 agent**:在 branch 上做可審查的 cod
 - `CLAUDE.md` / `README.md` / `AGENTS.md`(描述工程行為的段落可改,但**治理規則 / 設計判斷不是 Codex 的決定**)
 
 **預設不碰(Claude Code / Owner 的領域):**
-- **schema / 契約判斷**:`src/types.ts` 的 7 欄、`STATUS` 取值、`ERROR_MSG`/`WORKER_RUN` 對下游的意義 —— 改欄 = 改契約,要 OF-DOG + of-content-engine 兩 repo 一起,Owner 決定
+- **schema / 契約判斷**:`src/types.ts` 的 7 欄、`STATUS` 取值、`ERROR_MSG`/`WORKER_RUN` 對下游的意義 —— 改欄 = 改契約,要 feed-collector + of-content-engine 兩 repo 一起,Owner 決定
 - **自我進化迴圈架構** /「成效表」設計 / first-principles 判斷
 - **跨 repo 協調**:下游 worker 介面、SA 分享、GitHub secrets
 - **live Google Sheet 的實際寫入操作**(用真憑證 append / 刪列)
@@ -58,4 +58,4 @@ npm run build
 
 ## 領地硬化:目前刻意不上
 
-OF-DOG 是新小 repo、**零 Codex 碰撞史** → 目前**不裝** of-content-engine 那套 pytest 鐵律守衛(`claude/*`/`codex/*` branch-territory CI guard)。哪天真的反覆越界,再把 `CLAUDE_TERRITORY_PREFIXES` + branch guard 抄過來硬化。**先約定 + 人審,別為還沒發生的衝突先裝執法機器**(第 5 步別跳過第 1 步)。
+feed-collector 是新小 repo、**零 Codex 碰撞史** → 目前**不裝** of-content-engine 那套 pytest 鐵律守衛(`claude/*`/`codex/*` branch-territory CI guard)。哪天真的反覆越界,再把 `CLAUDE_TERRITORY_PREFIXES` + branch guard 抄過來硬化。**先約定 + 人審,別為還沒發生的衝突先裝執法機器**(第 5 步別跳過第 1 步)。
