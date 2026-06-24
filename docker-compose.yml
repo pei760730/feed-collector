@@ -1,0 +1,8 @@
+services:
+  feed-collector:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    # webhook 模式才需要對外 port;polling 不用
+    # ports:
+    #   - "8080:8080"
