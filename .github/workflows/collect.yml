@@ -26,7 +26,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
       - name: drain
         run: npm run drain
         env:
@@ -35,6 +34,9 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           STAGING_SHEET_NAME: 暫存區
           STORAGE: sheets
+          # 展開短網址(vm./vt.tiktok、xhslink…):不開的話短連結與展開後的去重各算各的(無人值守 cron 的靜默去重漏洞)。
+          # 展開失敗會 graceful fallback 回原網址(見 expandUrl.ts),不會擋流程。
+          EXPAND_SHORT_URLS: "true"
           # 來源白名單:只收這些 chat/user id 的訊息(公開後防陌生人灌池)。
           # 必設 —— 沒設 sheets 模式會 fail-fast 直接紅燈(寧可不跑,也不要大開)。
           ALLOWED_CHAT_IDS: ${{ secrets.ALLOWED_CHAT_IDS }}
