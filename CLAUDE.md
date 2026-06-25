@@ -44,8 +44,8 @@
 
 - 使用者 **Kai / Pei**([pei760730](https://github.com/pei760730)),回覆繁體中文、短句直接。
 - 技術棧已定案:Node.js + TypeScript、telegraf、googleapis、dayjs、vitest。儲存 Google Sheets。
-- 部署:**GitHub Actions cron drain(預設)** —— `collect.yml` 每 6h `npm run drain`。
-  間隔必須明顯 < Telegram 的 ~24h 留存(24h 整=零邊際會掉訊息);6h 留 4 倍邊際、≈ $0。
+- 部署:**GitHub Actions cron drain(預設)** —— `collect.yml` 每 5 分(`*/5`)`npm run drain`。
+  間隔必須明顯 < Telegram 的 ~24h 留存(24h 整=零邊際會掉訊息);`*/5` 邊際充足、public repo Actions 免費 ≈ $0。
   **不要在本機 Docker/WSL2 跑常駐**
   (連 googleapis 帶 JWT 大封包會 `Premature close`)。要「秒回」用雲端 VM 常駐 polling。
 - 開發指令:`npm run dev`、`npm test`、`npm run typecheck`、`npm run build`。

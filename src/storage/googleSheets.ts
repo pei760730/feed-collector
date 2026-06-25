@@ -35,7 +35,31 @@ function colLetter(index: number): string {
 const LAST_COL = colLetter(STAGING_COLUMNS.length - 1);
 const PROD_URL_HEADER = "影片連結";
 
-/** 429 / 5xx 退避重試;其餘錯誤直接丟。 */
+/**
+ * 退避重試,只對「暫態」錯誤:429 / 5xx,以及 token fetch / 連線時的網路型錯誤
+ * (`Premature close`、ECONNRESET、ETIMEDOUT、socket hang up…)。
+ * 其餘(4xx、表頭不符等真錯)直接丟,維持 fail-fast。
+ */
+function isTransient(err: unknown): boolean {
+  const e = err as { code?: number | string; response?: { status?: number }; message?: string };
+  const httpCode = typeof e?.code === "number" ? e.code : e?.response?.status;
+  if (httpCode === 429 || (typeof httpCode === "number" && httpCode >= 500 && httpCode < 600)) {
+    return true;
+  }
+  const netCode = typeof e?.code === "string" ? e.code : "";
+  if (["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE", "EAI_AGAIN"].includes(netCode)) {
+    return true;
+  }
+  const msg = (e?.message ?? "").toLowerCase();
+  return (
+    msg.includes("premature close") ||
+    msg.includes("socket hang up") ||
+    msg.includes("network") ||
+    msg.includes("econnreset") ||
+    msg.includes("etimedout")
+  );
+}
+
 async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 1; attempt <= tries; attempt++) {
@@ -43,9 +67,9 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Pro
       return await fn();
     } catch (err) {
       lastErr = err;
-      const e = err as { code?: number; response?: { status?: number } };
+      const e = err as { code?: number | string; response?: { status?: number } };
       const code = e?.code ?? e?.response?.status;
-      const retryable = code === 429 || (typeof code === "number" && code >= 500 && code < 600);
+      const retryable = isTransient(err);
       if (!retryable || attempt === tries) throw err;
       const backoff = 500 * 2 ** (attempt - 1); // 0.5s, 1s, 2s
       logger.warn(`${label} 第 ${attempt}/${tries} 次失敗(code=${code}),${backoff}ms 後重試`);
@@ -94,8 +118,12 @@ export class GoogleSheetsStorage implements Storage {
     return obj as unknown as StagingRow;
   }
 
-  /** 分頁不存在就建。 */
-  private async ensureTab(): Promise<boolean> {
+  /**
+   * 確認分頁存在,不存在就 fail-fast(不自動建)。
+   * 自動建分頁會在 GOOGLE_SHEET_ID / STAGING_SHEET_NAME 設錯時,於錯誤試算表靜默生出空分頁,
+   * chat-only owner 永遠不會發現。寧可大聲報錯(collect.yml 的 if:failure() 會 Telegram 通知)。
+   */
+  private async ensureTab(): Promise<void> {
     const meta = await withRetry("取分頁清單", () =>
       this.sheets.spreadsheets.get({
         spreadsheetId: this.sheetId,
@@ -103,19 +131,15 @@ export class GoogleSheetsStorage implements Storage {
       }),
     );
     const titles = (meta.data.sheets ?? []).map((s) => s.properties?.title);
-    if (titles.includes(this.sheetName)) return false;
-    logger.info(`分頁不存在,建立:${this.sheetName}`);
-    await withRetry("建立分頁", () =>
-      this.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.sheetId,
-        requestBody: { requests: [{ addSheet: { properties: { title: this.sheetName } } }] },
-      }),
+    if (titles.includes(this.sheetName)) return;
+    throw new Error(
+      `分頁「${this.sheetName}」不存在 — 請確認 GOOGLE_SHEET_ID / STAGING_SHEET_NAME。` +
+        `(本服務不自動建分頁,避免在錯誤試算表靜默建空表。)`,
     );
-    return true;
   }
 
   async ensureHeader(): Promise<void> {
-    const created = await this.ensureTab();
+    await this.ensureTab();
     const res = await withRetry("讀表頭", () =>
       this.sheets.spreadsheets.values.get({
         spreadsheetId: this.sheetId,
@@ -128,7 +152,7 @@ export class GoogleSheetsStorage implements Storage {
     const aligned =
       header.length === expected.length && expected.every((c, i) => header[i] === c);
 
-    if (empty || created) {
+    if (empty) {
       await withRetry("寫表頭", () =>
         this.sheets.spreadsheets.values.update({
           spreadsheetId: this.sheetId,
