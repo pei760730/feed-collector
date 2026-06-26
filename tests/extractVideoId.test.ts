@@ -15,6 +15,13 @@ describe("extractVideoId — 各平台正常抽取", () => {
     expect(extractVideoId("https://www.instagram.com/p/AbC123_-x").videoId).toBe("ig_AbC123_-x");
   });
 
+  it("Instagram /tv/<code> (IGTV)", () => {
+    const r = extractVideoId("https://www.instagram.com/tv/CxYz_-1");
+    expect(r.platform).toBe("Instagram");
+    expect(r.videoId).toBe("ig_CxYz_-1");
+    expect(r.unsupported).toBe(false);
+  });
+
   it("TikTok /video/<id> → tt_ 前綴", () => {
     const r = extractVideoId("https://www.tiktok.com/@u/video/7234567890");
     expect(r.platform).toBe("TikTok");
