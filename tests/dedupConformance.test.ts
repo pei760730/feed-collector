@@ -9,8 +9,10 @@
  *   翻譯:feed 的 `unsupported`(raw_) ⟺ canonical 的 `path`(都是「抽不到 id、不靠 id 收斂」)。
  *   例外:feed **不支援抖音**(無此平台),純抖音的 same_group 案例 skip(已知差異,非漂移)。
  *
- * 對手檔 = canonical(來源 voc,tbvoc/core/sv-bot/clip 共跑同一份)。改去重規則先改 voc canonical。
+ * 對手檔 = canonical `@pei760730/collector-core` 隨包發布的 contracts/voc/dedup_vectors.json
+ * (core 是 TS pipeline SSOT;tbvoc/sv-bot/clip 共跑同一份)。改去重規則 → 先改 core canonical → bump core tag。
  */
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -23,9 +25,14 @@ interface DedupVectors {
   edge_cases: { name: string; why: string; url: string; expect: "id" | "path" }[];
 }
 
-const vectors: DedupVectors = JSON.parse(
-  readFileSync(new URL("../contracts/voc/dedup_vectors.json", import.meta.url), "utf8"),
+// canonical 去重向量 = @pei760730/collector-core 隨包發布的 contracts/voc/dedup_vectors.json
+// (core 是 TS pipeline SSOT)。不再 vendor 進本 repo;改去重規則 → 先改 core canonical → bump core tag。
+// TODO(publish gate):package.json 的 dep 暫指 file:/Users/pei/collector-core(本機跑綠用);
+// core 出版/打 tag 後須重指回 github:pei760730/collector-core#v0.2.0。
+const _vectorsPath = createRequire(import.meta.url).resolve(
+  "@pei760730/collector-core/contracts/voc/dedup_vectors.json",
 );
+const vectors: DedupVectors = JSON.parse(readFileSync(_vectorsPath, "utf8"));
 
 const FIXED = () => 1_700_000_000_000; // 固定時戳:讓 unsupported 的 raw_<ts> 在同組內可比較
 

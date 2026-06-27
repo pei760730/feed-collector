@@ -11,6 +11,8 @@
  * (那才會錯欄毀資料,寧可停下等人對齊)。`findApprovedByUrl` 早已是具名解析,本次對齊其餘讀寫。
  */
 import { google, type sheets_v4 } from "googleapis";
+// 退避重試(只對暫態錯誤:429/5xx + 網路型)抽進 collector-core,三 collector 共用同一份。
+import { withRetry } from "@pei760730/collector-core";
 import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
@@ -100,50 +102,6 @@ export function readNamedRow(
 
 const LAST_COL = colLetter(STAGING_COLUMNS.length - 1);
 const PROD_URL_HEADER = "影片連結";
-
-/**
- * 退避重試,只對「暫態」錯誤:429 / 5xx,以及 token fetch / 連線時的網路型錯誤
- * (`Premature close`、ECONNRESET、ETIMEDOUT、socket hang up…)。
- * 其餘(4xx、表頭不符等真錯)直接丟,維持 fail-fast。
- */
-function isTransient(err: unknown): boolean {
-  const e = err as { code?: number | string; response?: { status?: number }; message?: string };
-  const httpCode = typeof e?.code === "number" ? e.code : e?.response?.status;
-  if (httpCode === 429 || (typeof httpCode === "number" && httpCode >= 500 && httpCode < 600)) {
-    return true;
-  }
-  const netCode = typeof e?.code === "string" ? e.code : "";
-  if (["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE", "EAI_AGAIN"].includes(netCode)) {
-    return true;
-  }
-  const msg = (e?.message ?? "").toLowerCase();
-  return (
-    msg.includes("premature close") ||
-    msg.includes("socket hang up") ||
-    msg.includes("network") ||
-    msg.includes("econnreset") ||
-    msg.includes("etimedout")
-  );
-}
-
-async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Promise<T> {
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= tries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      const e = err as { code?: number | string; response?: { status?: number } };
-      const code = e?.code ?? e?.response?.status;
-      const retryable = isTransient(err);
-      if (!retryable || attempt === tries) throw err;
-      const backoff = 500 * 2 ** (attempt - 1); // 0.5s, 1s, 2s
-      logger.warn(`${label} 第 ${attempt}/${tries} 次失敗(code=${code}),${backoff}ms 後重試`);
-      await new Promise((r) => setTimeout(r, backoff));
-    }
-  }
-  throw lastErr;
-}
 
 export class GoogleSheetsStorage implements Storage {
   private sheets: sheets_v4.Sheets;
