@@ -35,18 +35,35 @@ const MOBILE_TO_DESKTOP: Record<string, string> = {
   "mobile.twitter.com": "twitter.com",
 };
 
-/** 已知短網址服務 host(供 ingest 決定要不要展開)。 */
+/**
+ * 已知短網址服務 host(供 ingest 決定要不要展開;與 collector-core 那份必須一致)。
+ * 2026-06-27 補台/中常見分享短鏈(實測會 302 到目標):reurl.cc/pse.is/lihi*.cc/s.id/
+ * tiny.cc/rb.gy/cutt.ly,並補 v.douyin.com / short.link 對齊 core。
+ * 刻意不收:forms.gle(Google 表單)、a.co(Amazon)—— 非影片分享。
+ */
 const SHORT_URL_HOSTS = new Set([
-  "vm.tiktok.com",
-  "vt.tiktok.com",
-  "xhslink.com",
   "bit.ly",
   "tinyurl.com",
+  "tiny.cc",
   "goo.gl",
   "ow.ly",
   "is.gd",
   "buff.ly",
   "t.co",
+  "short.link",
+  "cutt.ly",
+  "rb.gy",
+  "s.id",
+  "reurl.cc",
+  "pse.is",
+  "lihi.cc",
+  "lihi1.cc",
+  "lihi2.cc",
+  "lihi3.cc",
+  "vm.tiktok.com",
+  "vt.tiktok.com",
+  "v.douyin.com",
+  "xhslink.com",
 ]);
 
 /** 是否為已知短網址服務。 */

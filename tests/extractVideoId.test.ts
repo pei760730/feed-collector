@@ -94,6 +94,43 @@ describe("extractVideoId — 各平台正常抽取", () => {
   });
 });
 
+describe("extractVideoId — 2026-06-27 對齊(pathname 化 + YT live + XHS hex)", () => {
+  it("YouTube /live/<id> → yt_(新增 live 形態)", () => {
+    expect(extractVideoId("https://www.youtube.com/live/dQw4w9WgXcQ").videoId).toBe(
+      "yt_dQw4w9WgXcQ",
+    );
+  });
+
+  it("YouTube embed/ 仍可抽", () => {
+    expect(extractVideoId("https://www.youtube.com/embed/dQw4w9WgXcQ").videoId).toBe(
+      "yt_dQw4w9WgXcQ",
+    );
+  });
+
+  it("小紅書 id 收緊小寫 hex:純 hex 抽得到", () => {
+    expect(extractVideoId("https://www.xiaohongshu.com/explore/663ed2b2000000001e0102a3").videoId).toBe(
+      "xhs_663ed2b2000000001e0102a3",
+    );
+  });
+
+  it("Task1:query 注入 /video//reel//videos/ 造不出假 id → unsupported(退 raw_)", () => {
+    expect(
+      extractVideoId("https://www.tiktok.com/@u/?redirect=/video/9999999999", FIXED).unsupported,
+    ).toBe(true);
+    expect(
+      extractVideoId("https://www.instagram.com/explore?from=/reel/INJECTED1", FIXED).unsupported,
+    ).toBe(true);
+    expect(
+      extractVideoId("https://www.facebook.com/feed?ref=/videos/1234567890", FIXED).unsupported,
+    ).toBe(true);
+  });
+
+  it("Task1:合法 path/query id 不受影響仍抽得到", () => {
+    expect(extractVideoId("https://www.tiktok.com/@u/video/7234567890").videoId).toBe("tt_7234567890");
+    expect(extractVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ").videoId).toBe("yt_dQw4w9WgXcQ");
+  });
+});
+
 describe("extractVideoId — Facebook 各形態", () => {
   it("A. fb.watch/<code> → fbw_", () => {
     const r = extractVideoId("https://fb.watch/abcXYZ_-");
