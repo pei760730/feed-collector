@@ -63,33 +63,45 @@ function firstMatch(url: string, patterns: RegExp[]): string | null {
   return null;
 }
 
+// Task1(2026-06-27):path 型 id pattern 只比對 **host+pathname**(不吃 query),擋
+// `?redirect=/video/<n>`、`?ref=/videos/<n>`、`?from=/reel/<code>` 之類 query 注入造假 ID。
+// 合法的 query id(YouTube `?v=`、Facebook `story_fbid`/`v`)另以白名單從 searchParams 抽。
 const IG_PATTERNS = [/\/(?:reel|reels|tv|p)\/([A-Za-z0-9_-]+)/];
 const TIKTOK_PATTERNS = [/\/video\/(\d+)/];
-// 結尾 (?![A-Za-z0-9_-]) 右邊界:YouTube ID 恰 11 碼。沒邊界時非 11 碼(如 12 碼)
-// 會被「靜默吃前 11 碼」造出截斷的錯 ID;有邊界 → 非 11 碼整段不命中 → 正確落 raw_。
-const YOUTUBE_PATTERNS = [
-  /[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
+// YouTube path 型形態(shorts/youtu.be/embed/live);watch?v= 走 query 白名單(見 youtubeQueryId)。
+// 結尾 (?![A-Za-z0-9_-]) 右邊界:YouTube ID 恰 11 碼,非 11 碼整段不命中 → 落 raw_。
+// 補 /live/(2026-06-27 對齊 core/voc/tbvoc canonical)。
+const YOUTUBE_PATH_PATTERNS = [
   /shorts\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
   /embed\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
+  /\/live\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
   /youtu\.be\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
 ];
-const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([A-Za-z0-9]+)/];
+const YOUTUBE_V_ID = /^[A-Za-z0-9_-]{11}$/;
+// 小紅書 id 收緊成小寫 hex(真實 id 是 24 碼小寫 hex)。對齊 core/voc/tbvoc 的 [a-f0-9](2026-06-27)。
+const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([a-f0-9]+)/];
 const THREADS_PATTERNS = [/\/post\/([A-Za-z0-9_-]+)/];
+
+/** YouTube watch?v= 走 query 白名單:取 top-level `v`、且恰 11 碼才算。 */
+function youtubeQueryId(params: URLSearchParams): string | null {
+  const v = params.get("v") ?? "";
+  return YOUTUBE_V_ID.test(v) ? v : null;
+}
 
 /**
  * Facebook 抽 ID —— 四種形態依序試,各自帶不同前綴。
- *   A. fb.watch/<code>          → fbw_
- *   B. /(reel|reels|videos)/<n> → fb_
- *   C. /share/[rvp]/<code>      → fbs_
- *   D. query story_fbid 或 v    → fb_
+ *   A. fb.watch/<code>          → fbw_   (host+pathname)
+ *   B. /(reel|reels|videos)/<n> → fb_    (host+pathname)
+ *   C. /share/[rvp]/<code>      → fbs_   (host+pathname)
+ *   D. query story_fbid 或 v    → fb_    (query 白名單)
  */
 function extractFacebook(url: URL): string | null {
-  const full = url.toString();
-  const fbw = full.match(/fb\.watch\/([A-Za-z0-9_-]+)/);
+  const pathPart = `${url.host}${url.pathname}`;
+  const fbw = pathPart.match(/fb\.watch\/([A-Za-z0-9_-]+)/);
   if (fbw) return `fbw_${fbw[1]}`;
-  const vids = full.match(/\/(?:reel|reels|videos)\/(\d+)/);
+  const vids = pathPart.match(/\/(?:reel|reels|videos)\/(\d+)/);
   if (vids) return `fb_${vids[1]}`;
-  const share = full.match(/\/share\/[rvp]\/([A-Za-z0-9_-]+)/);
+  const share = pathPart.match(/\/share\/[rvp]\/([A-Za-z0-9_-]+)/);
   if (share) return `fbs_${share[1]}`;
   const story = url.searchParams.get("story_fbid") ?? url.searchParams.get("v");
   if (story) return `fb_${story}`;
@@ -143,32 +155,34 @@ export function extractVideoId(
 
   const host = url.hostname.toLowerCase();
   const platform = detectPlatform(host);
+  // path 型 pattern 只比對 host+pathname(砍 query),擋 query 注入造假 ID。
+  const pathPart = `${url.host}${url.pathname}`;
 
   switch (platform) {
     case "Instagram": {
-      const m = firstMatch(working, IG_PATTERNS);
+      const m = firstMatch(pathPart, IG_PATTERNS);
       return raw(m ? `ig_${m}` : null, platform);
     }
     case "TikTok": {
-      const m = firstMatch(working, TIKTOK_PATTERNS);
+      const m = firstMatch(pathPart, TIKTOK_PATTERNS);
       return raw(m ? `tt_${m}` : null, platform);
     }
     case "YouTube": {
-      const m = firstMatch(working, YOUTUBE_PATTERNS);
+      const m = firstMatch(pathPart, YOUTUBE_PATH_PATTERNS) ?? youtubeQueryId(url.searchParams);
       return raw(m ? `yt_${m}` : null, platform);
     }
     case "Facebook":
       return raw(extractFacebook(url), platform);
     case "X": {
-      const m = working.match(/\/status\/(\d+)/);
+      const m = pathPart.match(/\/status\/(\d+)/);
       return raw(m ? `x_${m[1]}` : null, platform);
     }
     case "小紅書": {
-      const m = firstMatch(working, XHS_PATTERNS);
+      const m = firstMatch(pathPart, XHS_PATTERNS);
       return raw(m ? `xhs_${m}` : null, platform);
     }
     case "Threads": {
-      const m = firstMatch(working, THREADS_PATTERNS);
+      const m = firstMatch(pathPart, THREADS_PATTERNS);
       return raw(m ? `th_${m}` : null, platform);
     }
     default:
