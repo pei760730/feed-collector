@@ -27,8 +27,6 @@ interface DedupVectors {
 
 // canonical 去重向量 = @pei760730/collector-core 隨包發布的 contracts/voc/dedup_vectors.json
 // (core 是 TS pipeline SSOT)。不再 vendor 進本 repo;改去重規則 → 先改 core canonical → bump core tag。
-// TODO(publish gate):package.json 的 dep 暫指 file:/Users/pei/collector-core(本機跑綠用);
-// core 出版/打 tag 後須重指回 github:pei760730/collector-core#v0.2.0。
 const _vectorsPath = createRequire(import.meta.url).resolve(
   "@pei760730/collector-core/contracts/voc/dedup_vectors.json",
 );
