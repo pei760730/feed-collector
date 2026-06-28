@@ -72,4 +72,4 @@
 
 - **跨領地改動**:在 PR 說明原因、人工 review merge。揭露 ≠ 授權。
 - **Claude 自律**:不主動重構 Codex 領地;審 Codex PR 只驗不重寫。
-- **硬化目前刻意不上**:新小 repo 零碰撞史,不裝 of-content-engine 那套 branch-territory 鐵律 CI;反覆越界才硬化。
+- **硬化目前刻意不上**:新小 repo 零碰撞史,不裝下游 engine 那套 branch-territory 鐵律 CI;反覆越界才硬化。
