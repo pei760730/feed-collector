@@ -78,8 +78,10 @@ const YOUTUBE_PATH_PATTERNS = [
   /youtu\.be\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/,
 ];
 const YOUTUBE_V_ID = /^[A-Za-z0-9_-]{11}$/;
-// 小紅書 id 收緊成小寫 hex(真實 id 是 24 碼小寫 hex)。對齊 core/voc/tbvoc 的 [a-f0-9](2026-06-27)。
-const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([a-f0-9]+)/];
+// 小紅書 id 是 24 碼 hex(真實為小寫,share 工具偶有大寫)。`i` flag 對齊 core/voc/tbvoc 的
+// [a-f0-9]+re.I:大寫 hex 整段抽,避免遇大寫字母截斷成殘 id → 不同筆記假合併(2026-06-29 修,
+// 與 collector-core v0.2.1 同步)。
+const XHS_PATTERNS = [/\/(?:explore|discovery\/item)\/([a-f0-9]+)/i];
 const THREADS_PATTERNS = [/\/post\/([A-Za-z0-9_-]+)/];
 
 /** YouTube watch?v= 走 query 白名單:取 top-level `v`、且恰 11 碼才算。 */

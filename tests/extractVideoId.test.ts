@@ -113,6 +113,13 @@ describe("extractVideoId — 2026-06-27 對齊(pathname 化 + YT live + XHS hex)
     );
   });
 
+  it("小紅書 大寫 hex id 整段抽不截斷(i flag,2026-06-29 修;同 collector-core v0.2.1)", () => {
+    // 缺 i flag 時 663ED2B2… 會在 E 截斷成 xhs_663 → 不同筆記假合併。
+    expect(
+      extractVideoId("https://www.xiaohongshu.com/explore/663ED2B2000000001E0102A3").videoId,
+    ).toBe("xhs_663ED2B2000000001E0102A3");
+  });
+
   it("Task1:query 注入 /video//reel//videos/ 造不出假 id → unsupported(退 raw_)", () => {
     expect(
       extractVideoId("https://www.tiktok.com/@u/?redirect=/video/9999999999", FIXED).unsupported,
