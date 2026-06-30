@@ -1,0 +1,29 @@
+name: kai-notify proof (one-shot)
+
+# Temporary end-to-end proof that pei760730/kai-notify@main delivers a real
+# Telegram message, reusing this repo's existing bot secret via the action's
+# bot-token input (the token never leaves GitHub). Removed after the proof run.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: kai-notify-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pei760730/kai-notify@main
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.KAI_NOTIFY_CHAT_ID }}
+          title: "kai-notify 上線 ✅"
+          items: |
+            這是 outbound 通知器官的端到端測試
+            來源:feed-collector workflow_dispatch
+            之後 benchmark-radar / th-ops 等都能一行接這個
