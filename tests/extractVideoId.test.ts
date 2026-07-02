@@ -113,11 +113,14 @@ describe("extractVideoId — 2026-06-27 對齊(pathname 化 + YT live + XHS hex)
     );
   });
 
-  it("小紅書 大寫 hex id 整段抽不截斷(i flag,2026-06-29 修;同 collector-core v0.2.1)", () => {
-    // 缺 i flag 時 663ED2B2… 會在 E 截斷成 xhs_663 → 不同筆記假合併。
-    expect(
-      extractVideoId("https://www.xiaohongshu.com/explore/663ED2B2000000001E0102A3").videoId,
-    ).toBe("xhs_663ED2B2000000001E0102A3");
+  it("小紅書 大寫 hex id 整段抽不截斷、且 lowercase 收斂(i flag + case-fold)", () => {
+    // 缺 i flag 時 663ED2B2… 會在 E 截斷成 xhs_663 → 不同筆記假合併(2026-06-29 修)。
+    // 抽整段後還要 lowercase:hex 大小寫無語義,大小寫變體必須撞同 VIDEO_ID 才去得了重
+    // (2026-07-02 補;core/voc/tbvoc 皆 lowercase,feed 無 groupKey 層故在抽取時收斂)。
+    const upper = extractVideoId("https://www.xiaohongshu.com/explore/663ED2B2000000001E0102A3");
+    const lower = extractVideoId("https://www.xiaohongshu.com/explore/663ed2b2000000001e0102a3");
+    expect(upper.videoId).toBe("xhs_663ed2b2000000001e0102a3");
+    expect(upper.videoId).toBe(lower.videoId);
   });
 
   it("Task1:query 注入 /video//reel//videos/ 造不出假 id → unsupported(退 raw_)", () => {
@@ -143,6 +146,13 @@ describe("extractVideoId — Facebook 各形態", () => {
     const r = extractVideoId("https://fb.watch/abcXYZ_-");
     expect(r.platform).toBe("Facebook");
     expect(r.videoId).toBe("fbw_abcXYZ_-");
+  });
+
+  it("A2. fb.me 短鏈判 Facebook 不落 Other(2026-07-02 補,對齊 core/引擎)", () => {
+    // fb.me 是 FB 官方短鏈;無 video-id 形態 → unsupported raw_,但 PLATFORM 要標對。
+    const r = extractVideoId("https://fb.me/1abcdefgh", FIXED);
+    expect(r.platform).toBe("Facebook");
+    expect(r.unsupported).toBe(true);
   });
 
   it("B. /reel/<n> → fb_", () => {

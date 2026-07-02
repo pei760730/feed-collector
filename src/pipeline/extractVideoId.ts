@@ -37,7 +37,7 @@ const PLATFORM_RULES: PlatformRule[] = [
   { platform: "Instagram", domains: ["instagram.com"] },
   { platform: "TikTok", domains: ["tiktok.com"] },
   { platform: "YouTube", domains: ["youtube.com", "youtu.be"] },
-  { platform: "Facebook", domains: ["facebook.com", "fb.watch", "fb.com"] },
+  { platform: "Facebook", domains: ["facebook.com", "fb.watch", "fb.com", "fb.me"] },
   { platform: "X", domains: ["x.com", "twitter.com"] },
   { platform: "小紅書", domains: ["xiaohongshu.com", "xhslink.com"] },
   { platform: "Threads", domains: ["threads.net", "threads.com"] },
@@ -181,7 +181,10 @@ export function extractVideoId(
     }
     case "小紅書": {
       const m = firstMatch(pathPart, XHS_PATTERNS);
-      return raw(m ? `xhs_${m}` : null, platform);
+      // hex 大小寫無語義:lowercase 收斂,同筆記大小寫變體才會撞同 VIDEO_ID 去重
+      // (core/voc/tbvoc 皆 lowercase;feed 無 groupKey 層,得在抽取時收斂)。
+      // 只收斂 XHS —— IG/YT/Threads 的 shortcode 大小寫有語義,保留原樣。
+      return raw(m ? `xhs_${m.toLowerCase()}` : null, platform);
     }
     case "Threads": {
       const m = firstMatch(pathPart, THREADS_PATTERNS);

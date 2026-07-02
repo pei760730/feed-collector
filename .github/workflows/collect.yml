@@ -3,12 +3,16 @@ name: collect
 # 定時把 Telegram 這段時間囤的訊息撈乾、解析、寫進「暫存區」,然後結束。
 # Telegram 只保留未領更新約 24h —— 間隔必須「明顯 < 24h」才不漏:24h 整等於零安全邊際,
 # 任何一次 run 延遲/失敗就會讓超過 24h 的訊息被 Telegram 丟掉。
-# 取 15 分(public repo Actions 免費無上限,密一點不花錢):收訊息延遲約 15–25 分,
-# 仍遠 < Telegram 24h 留存,邊際充足。要立刻收就按 workflow_dispatch。
+# cron 寫 */5(排程下限、free 不花錢),但 GitHub 對高頻 cron 節流:實測間隔約 1–2.5 小時。
+# 體感 = 丟連結後最慢 ~2.5h 入暫存區,仍遠 < Telegram 24h 留存,邊際充足。
+# 要立刻收就按 workflow_dispatch。
 on:
   schedule:
-    - cron: "*/5 * * * *" # 每 5 分(UTC,GitHub 排程下限);實際 GitHub 常拖到更久,非秒到
+    - cron: "*/5 * * * *" # 每 5 分(UTC);實際被 GitHub 節流到 1–2.5h 一跑,見上
   workflow_dispatch: {} # 手動補跑(要立刻收就按這個)
+
+permissions:
+  contents: read
 
 # 同時只跑一個,避免兩個 job 並行領 getUpdates 互搶(會漏 ack)。
 concurrency:
@@ -27,7 +31,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: drain
-        # 留存輸出供失敗通知擷取真因(default shell 已含 -o pipefail,npm 退出碼會正確傳遞)。
+        # 留存輸出供失敗通知擷取真因。shell: bash 必須顯式寫 —— 只有顯式指定才會拿到
+        # `-eo pipefail`(預設 shell 是 `bash -e {0}`,無 pipefail,npm 掛掉會被 tee 吞成綠燈,
+        # 下面 if: failure() 的告警永不觸發)。
+        shell: bash
         run: npm run drain 2>&1 | tee drain.log
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -49,7 +56,7 @@ jobs:
         if: failure()
         id: failmsg
         run: |
-          ERR=$(grep -iE 'ERROR|Error:|錯誤|失敗' drain.log 2>/dev/null | tail -n 2 | tr '\n' ' ' | python3 -c 'import sys;sys.stdout.write(sys.stdin.read()[:280])')
+          ERR=$(grep -iE 'ERROR|Error:|錯誤|失敗' drain.log 2>/dev/null | tail -n 2 | tr '\n' ' ' | python3 -c 'import sys;sys.stdout.write(sys.stdin.buffer.read().decode("utf-8","replace")[:280])')
           [ -z "$ERR" ] && ERR="(未擷取到錯誤,請看 log)"
           echo "text=🔴 feed-collector collect 失敗:${ERR} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
       - name: Notify Kai on failure (kai-notify)
