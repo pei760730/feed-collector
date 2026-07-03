@@ -6,7 +6,8 @@ import dotenv from "dotenv";
 import { readFileSync } from "node:fs";
 
 // override:true —— .env 蓋過系統既有環境變數,避免殘留舊/打錯的 token。
-dotenv.config({ override: true });
+// quiet:true —— dotenv v17 預設會印 tip 行,靜音避免污染 drain.log / CI 輸出。
+dotenv.config({ override: true, quiet: true });
 
 function required(name: string): string {
   const v = process.env[name];
