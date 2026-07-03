@@ -9,7 +9,7 @@
 1. **機密永不進 git**:`TELEGRAM_BOT_TOKEN`、`service_account.json`、`.env`。`.gitignore` 已擋,有人提議 commit 立刻拒絕。
 2. **未經明確同意不 commit / push / 開 PR**。在 branch 做完、跑 `npm test` + `npm run typecheck`、先報告,等 yes。
 3. **只改被要求的部分**,不順手改旁邊的 code/欄位。
-4. **n8n 的 regex 與邏輯 1:1 保留**,別憑印象重寫跑掉行為。改抽取規則先補 / 改 `tests/`。
+4. **抽取/清理規則以 collector-core canonical 為對齊基準**(2026-06-27 起已兩輪對齊;接 core 是既定路線),改規則先補 / 改 `tests/`,別憑印象重寫跑掉行為。(舊「n8n regex 1:1」紅線已退役 2026-07-03:行為早非 n8n 1:1。)
 5. **`ERROR_MSG` / `WORKER_RUN` 是下游 worker 的欄**:本服務 append 一律留空,**永不覆寫**既有列。
 
 ## 第二層:資料地圖
@@ -49,7 +49,7 @@
   這不影響正確性:間隔只需明顯 < Telegram ~24h 留存,2–3h 遠小於 24h;且每次 run 都
   `getUpdates` 撈乾全部 pending,漏跑幾次也自癒。public repo Actions 免費 ≈ $0。
   **不要在本機 Docker/WSL2 跑常駐**
-  (連 googleapis 帶 JWT 大封包會 `Premature close`)。要「秒回」用雲端 VM 常駐 polling。
+  (連 googleapis 帶 JWT 大封包會 `Premature close`)。Docker/webhook 部署線已於 2026-07-03 解散(常駐線從未上場);`npm run dev` = 本機 long polling,僅開發用。
 - 開發指令:`npm run dev`、`npm test`、`npm run typecheck`、`npm run build`。
 
 ## 第五層:待確認(邊做邊修)

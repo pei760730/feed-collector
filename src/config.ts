@@ -28,16 +28,6 @@ function boolEnv(name: string, fallback: boolean): boolean {
   return ["1", "true", "yes", "on"].includes(v.trim().toLowerCase());
 }
 
-function numEnv(name: string, fallback: number): number {
-  const v = process.env[name];
-  if (v == null || v.trim() === "") return fallback;
-  const n = Number(v.trim());
-  if (!Number.isFinite(n)) {
-    throw new Error(`環境變數 ${name} 不是合法數字:'${v}'`);
-  }
-  return n;
-}
-
 function enumEnv<T extends string>(name: string, allowed: readonly T[], fallback: T): T {
   const v = (process.env[name] ?? "").trim();
   if (v === "") return fallback;
@@ -64,14 +54,11 @@ function chatIdsEnv(name: string): number[] {
   });
 }
 
-export type BotMode = "polling" | "webhook";
 export type StorageMode = "sheets" | "memory";
 
 export interface Config {
   telegramToken: string;
-  mode: BotMode;
   storage: StorageMode;
-  webhook: { domain: string; path: string; port: number };
   /** memory 乾跑模式下為 null(不需 Google 憑證)。 */
   google: {
     credentials: { client_email: string; private_key: string };
@@ -124,7 +111,6 @@ let cached: Config | null = null;
 
 export function loadConfig(): Config {
   if (cached) return cached;
-  const mode = enumEnv("BOT_MODE", ["polling", "webhook"] as const, "polling");
   const storage = enumEnv("STORAGE", ["sheets", "memory"] as const, "sheets");
   const google =
     storage === "memory"
@@ -137,22 +123,13 @@ export function loadConfig(): Config {
         };
   cached = {
     telegramToken: required("TELEGRAM_BOT_TOKEN"),
-    mode,
     storage,
-    webhook: {
-      domain: optional("WEBHOOK_DOMAIN", ""),
-      path: optional("WEBHOOK_PATH", "/telegraf"),
-      port: numEnv("PORT", 8080),
-    },
     google,
     errorChatId: optional("ERROR_CHAT_ID", ""),
     allowedChatIds: chatIdsEnv("ALLOWED_CHAT_IDS"),
     expandShortUrls: boolEnv("EXPAND_SHORT_URLS", false),
     logLevel: optional("LOG_LEVEL", "info"),
   };
-  if (mode === "webhook" && !cached.webhook.domain) {
-    throw new Error("BOT_MODE=webhook 但未設 WEBHOOK_DOMAIN");
-  }
   // 公開 repo 防灌池:sheets 模式(=正式寫真表)必須設來源白名單,否則任何人都能餵 bot 寫進你的表。
   // 寧可 fail-fast 紅燈被發現,也不要默默大開。memory 乾跑不寫真表,免設。
   if (storage === "sheets" && cached.allowedChatIds.length === 0) {
