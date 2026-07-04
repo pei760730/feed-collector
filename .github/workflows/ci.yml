@@ -22,6 +22,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # collector-core 宣稱==實裝守門:git-tag dep 的 lock resolved 是 commit hash,
+      # 只改 spec 字串時 npm ci 會靜默裝舊版且全綠(2026-07-04 三姊妹 repo 實證)
+      - name: core version guard
+        run: |
+          node -e "
+          const spec=(require('./package.json').dependencies||{})['@pei760730/collector-core']||'';
+          const m=spec.match(/#v(.+)\$/);
+          if(!m){console.log('skip: not a git-tag dep');process.exit(0);}
+          const inst=require('./node_modules/@pei760730/collector-core/package.json').version;
+          if(inst!==m[1]){console.error('declared v'+m[1]+' !== installed '+inst);process.exit(1);}
+          console.log('collector-core ok: '+inst);
+          "
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
