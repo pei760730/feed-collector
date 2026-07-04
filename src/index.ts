@@ -1,6 +1,5 @@
 /**
  * 進入點 —— 載設定、接 storage、起 bot。
- * BOT_MODE=polling(自架/雲端常駐預設)或 webhook(需 WEBHOOK_DOMAIN)。
  * 正式部署建議走 GitHub Actions cron drain($0,見 src/drain.ts)。
  */
 import { loadConfig } from "./config.js";
@@ -35,14 +34,8 @@ async function main(): Promise<void> {
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
 
-  if (config.mode === "webhook") {
-    const { domain, path, port } = config.webhook;
-    void bot.launch({ webhook: { domain, hookPath: path, port } }, () =>
-      logger.info(`bot 已啟動(webhook):${domain}${path} :${port}`),
-    );
-  } else {
-    void bot.launch(() => logger.info("bot 已啟動(long polling)"));
-  }
+  // long polling —— 本機開發用(生產走 Actions cron drain);webhook 線已於 2026-07-03 解散
+  void bot.launch(() => logger.info("bot 已啟動(long polling)"));
 }
 
 main().catch((err) => {
