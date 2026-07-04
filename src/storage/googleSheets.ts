@@ -26,6 +26,12 @@ export interface GoogleSheetsOptions {
   sheetId: string;
   sheetName: string;
   prodSheetName: string;
+  /**
+   * 總表去重 gate 失效(讀不到總表/找不到 URL 欄)時通知。gate 是 fail-soft:失效照常收錄
+   * (可能重複),但這是全 pipeline 唯一「下游改變收集行為」的跨系統閉環,斷了不能無聲——
+   * 由呼叫端(drain)接去 Telegram 告警。不給 = 維持原行為(只 logger.warn)。
+   */
+  onGateSkip?: (detail: string) => void;
 }
 
 /** 表頭解析結果:每個必要欄的 0-based 欄位索引 + 整列寬度。 */
@@ -108,12 +114,14 @@ export class GoogleSheetsStorage implements Storage {
   private readonly sheetId: string;
   private readonly sheetName: string;
   private readonly prodSheetName: string;
+  private readonly onGateSkip?: (detail: string) => void;
   private layoutCache?: HeaderLayout;
 
   constructor(opts: GoogleSheetsOptions) {
     this.sheetId = opts.sheetId;
     this.sheetName = opts.sheetName;
     this.prodSheetName = opts.prodSheetName;
+    this.onGateSkip = opts.onGateSkip;
     const auth = new google.auth.JWT({
       email: opts.credentials.client_email,
       key: opts.credentials.private_key,
@@ -231,12 +239,14 @@ export class GoogleSheetsStorage implements Storage {
       header = (res.data.values?.[0] ?? []).map((cell) => String(cell ?? "").trim());
     } catch (err) {
       logger.warn(`總表去重跳過:無法讀取分頁 ${this.prodSheetName}`, err);
+      this.onGateSkip?.(`總表去重跳過:無法讀取分頁 ${this.prodSheetName}(擋回流 gate 失效,照常收錄)`);
       return false;
     }
 
     const urlColIndex = header.findIndex((cell) => cell === PROD_URL_HEADER);
     if (urlColIndex < 0) {
       logger.warn(`總表去重跳過:${this.prodSheetName} 找不到「${PROD_URL_HEADER}」欄`);
+      this.onGateSkip?.(`總表去重跳過:${this.prodSheetName} 找不到「${PROD_URL_HEADER}」欄(擋回流 gate 失效,照常收錄)`);
       return false;
     }
 
@@ -252,6 +262,7 @@ export class GoogleSheetsStorage implements Storage {
       return values.some((row) => String(row?.[0] ?? "").trim() === key);
     } catch (err) {
       logger.warn(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄`, err);
+      this.onGateSkip?.(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄(擋回流 gate 失效,照常收錄)`);
       return false;
     }
   }

@@ -22,6 +22,10 @@ async function main(): Promise<void> {
   const config = loadConfig();
   // DATE 一律 Asia/Taipei(utils/date.ts 寫死),不靠 process.env.TZ。
 
+  // 總表 gate 失效告警:先宣告、bot 建立後才綁定(gate 只在 handleUpdate 期間觸發,屆時 bot 已在)。
+  // 每輪 drain 至多告警一次(一輪失效通常整輪失效,逐訊息轟炸沒有資訊量)。
+  let sendGateAlert: (detail: string) => void = () => {};
+
   let storage: Storage;
   if (config.storage === "memory") {
     storage = new MemoryStorage();
@@ -33,6 +37,7 @@ async function main(): Promise<void> {
       sheetId: config.google.sheetId,
       sheetName: config.google.stagingSheetName,
       prodSheetName: config.google.prodSheetName,
+      onGateSkip: (detail) => sendGateAlert(detail),
     });
   }
   await storage.ensureHeader();
@@ -45,6 +50,14 @@ async function main(): Promise<void> {
       persistFailed = true;
     },
   });
+  let gateAlerted = false;
+  sendGateAlert = (detail) => {
+    if (gateAlerted || !config.errorChatId) return;
+    gateAlerted = true;
+    void bot.telegram
+      .sendMessage(config.errorChatId, `🐞 ${detail}`)
+      .catch((e) => logger.error("通知 error chat 失敗", e));
+  };
   bot.botInfo = await bot.telegram.getMe(); // handleUpdate 解析群組 /command@botname 需要
   await bot.telegram.deleteWebhook({ drop_pending_updates: false }); // 清殘留 webhook,保留待領更新
 
