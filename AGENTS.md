@@ -12,7 +12,7 @@ Codex 是這個 repo 的**工程管線 agent**:在 branch 上做可審查的 cod
 **預設負責(可審查的工程):**
 - `src/pipeline/`(parse / cleanUrl / extractVideoId)、`src/storage/`、`src/bot/`、`src/utils/`、`src/messages/`
 - `tests/`、`tsconfig*.json`、`vitest.config.ts`、`package.json`(依賴 / 腳本)
-- `.github/workflows/`、`Dockerfile` / `docker-compose.yml`
+- `.github/workflows/`
 - bug 修復、refactor、型別、lint / test / build 修復、效能
 
 **被要求才碰:**

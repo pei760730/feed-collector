@@ -55,7 +55,11 @@
 ## 第五層:待確認(邊做邊修)
 
 - 備註擷取:本版**不抓**(規格如此);要加再開。
-- 短網址展開(`EXPAND_SHORT_URLS`)預設關;要對 vm./vt.tiktok、xhslink 跟隨 redirect 再開並驗。
+- 短網址展開已於生產開啟(collect.yml `EXPAND_SHORT_URLS="true"`,失敗 graceful fallback 已驗);本機開發預設仍關。(2026-07-04 銷項)
+- **Observation(2026-07-04 體檢)**:解散/退役一條線時,掃除半徑要含 docs+dotfiles。
+  觸發:任何「解散部署線/退役機制/刪 symbol」的 PR。理由:此 repo 全 AI-facing,殘留敘述=誤導下一個 agent 的行為指令。
+  證據:PR #29 刪了 Dockerfile/docker-compose,但 `.dockerignore`、AGENTS.md 領地表、本層待辦三處殘留(PR #30 收尾)。
+  失效條件:同類掃除連續兩次零殘留,或 owner 全域規則(刪 symbol 連 docs+config 一起 grep)足夠覆蓋 → 本條直接移除、不升級。
 - 下游 worker 契約細節(它讀哪些 STATUS、寫回哪些欄位)待對齊,以免欄位衝突。改本服務寫入欄位前先確認。
 - 與姊妹專案 short-video-bot 的 ID 前綴**不同**(本支 `tt_` vs 另一支 `tiktok_`)。
   若未來兩支共用同一張表,需先統一前綴規則,否則去重失效。**目前各自獨立表 → 無衝突**。
@@ -67,7 +71,7 @@
 | 領地 | Claude Code / Owner | Codex |
 |---|---|---|
 | 分支前綴 | `claude/*` | `codex/*`(PR 標題 `[codex]`,draft PR → `gh pr ready` → Owner merge) |
-| 程式 | 設計判斷、跨 repo 協調、Sheet 操作 | `src/`(pipeline/storage/bot/utils/messages)、`tests/`、CI、Docker、依賴 |
+| 程式 | 設計判斷、跨 repo 協調、Sheet 操作 | `src/`(pipeline/storage/bot/utils/messages)、`tests/`、CI、依賴 |
 | 治理 / schema | `CLAUDE.md`、`src/types.ts` 7 欄契約、`ERROR_MSG`/`WORKER_RUN` 語意、迴圈架構 | 被要求才碰,且只改「描述工程行為」段落 |
 
 - **跨領地改動**:在 PR 說明原因、人工 review merge。揭露 ≠ 授權。
