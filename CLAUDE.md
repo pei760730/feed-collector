@@ -2,7 +2,7 @@
 
 > 接手這個 repo(含 AI)先讀這份。feed-collector = Telegram 短影音收集/佇列 bot,取代舊 n8n「feed-collector」流程。
 > 貼影片連結 → 解析→清理→FB 轉址解開→判平台→抽 video ID→去重→寫 Google Sheet「暫存區」,
-> 標 `pending_review` / `unsupported` 狀態供**下游 worker** 接手。
+> 標 `pending_review` / `unsupported` 狀態供**下游**(人工選片 / of-content-engine 的 GAS onEdit)接手。
 
 ## 第一層:永久紅線(違反就停)
 
@@ -61,7 +61,7 @@
   觸發:任何「解散部署線/退役機制/刪 symbol」的 PR。理由:此 repo 全 AI-facing,殘留敘述=誤導下一個 agent 的行為指令。
   證據:PR #29 刪了 Dockerfile/docker-compose,但 `.dockerignore`、AGENTS.md 領地表、本層待辦三處殘留(PR #30 收尾)。
   失效條件:同類掃除連續兩次零殘留,或 owner 全域規則(刪 symbol 連 docs+config 一起 grep)足夠覆蓋 → 本條直接移除、不升級。
-- 下游 worker 契約細節(它讀哪些 STATUS、寫回哪些欄位)待對齊,以免欄位衝突。改本服務寫入欄位前先確認。
+- 下游接手方 = 人工選片 + of-content-engine 的 GAS onEdit(worker 已退役);GAS 認 STATUS 欄、搬整列,**不寫回暫存區任何欄** → 無欄位衝突。本服務寫入欄位前仍先確認下游現況。
 - 與姊妹專案 short-video-bot 的 ID 前綴**不同**(本支 `tt_` vs 另一支 `tiktok_`)。
   若未來兩支共用同一張表,需先統一前綴規則,否則去重失效。**目前各自獨立表 → 無衝突**。
 

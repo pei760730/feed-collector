@@ -1,7 +1,7 @@
 # AGENTS.md — Codex CLI 行為規則(feed-collector)
 
 > 這份是給 **Codex** 的。repo 的權威治理檔是 **[CLAUDE.md](./CLAUDE.md)**(紅線、資料地圖、技術不變式)。Codex 動工前先讀 CLAUDE.md。
-> feed-collector = Telegram 短影音收集/佇列 bot,解析連結 → 寫 Google Sheet「暫存區」,以 `pending_review`/`unsupported` 狀態流交給下游 worker 接手。
+> feed-collector = Telegram 短影音收集/佇列 bot,解析連結 → 寫 Google Sheet「暫存區」,以 `pending_review`/`unsupported` 狀態流交給下游(人工選片 / of-content-engine GAS)接手。
 >
 > **生態原則**:整個下游內容線的分工是「**Codex 顧後端工程,Claude / Owner 顧設計判斷**」。本 repo 照此切;下游 content engine 有自己更嚴的領地定義(那邊已上 pytest 鐵律守衛)。
 

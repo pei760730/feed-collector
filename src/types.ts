@@ -21,7 +21,7 @@ export type Platform =
 
 /**
  * STATUS 取值:
- * - pending_review:新、可解析,待下游 worker 處理。
+ * - pending_review:新、可解析,待人工選片 / 下游 GAS 接手。
  * - unsupported:無法解析(VIDEO_ID 為 raw_*),待人工看。
  */
 export const STATUS = {
