@@ -57,10 +57,10 @@
 
 - 備註擷取:本版**不抓**(規格如此);要加再開。
 - 短網址展開已於生產開啟(collect.yml `EXPAND_SHORT_URLS="true"`,失敗 graceful fallback 已驗);本機開發預設仍關。(2026-07-04 銷項)
-- **Observation(2026-07-04 體檢)**:解散/退役一條線時,掃除半徑要含 docs+dotfiles。
-  觸發:任何「解散部署線/退役機制/刪 symbol」的 PR。理由:此 repo 全 AI-facing,殘留敘述=誤導下一個 agent 的行為指令。
-  證據:PR #29 刪了 Dockerfile/docker-compose,但 `.dockerignore`、AGENTS.md 領地表、本層待辦三處殘留(PR #30 收尾)。
-  失效條件:同類掃除連續兩次零殘留,或 owner 全域規則(刪 symbol 連 docs+config 一起 grep)足夠覆蓋 → 本條直接移除、不升級。
+- **Rule(2026-07-04 起 Observation → 2026-07-05 升級,已三度復發)**:退役一個機制時,掃除半徑要含 **(a) 全 docs/註解/dotfiles + (b) 跨 repo 共用契約的 consumer**。一次 grep 到底,別分兩次。
+  觸發:任何「解散部署線/退役機制/刪 symbol/刪 sheet 欄」的 PR。理由:此 repo 全 AI-facing,殘留敘述=誤導下一個 agent;且「暫存區」schema 是跨 repo 共用契約,單邊改會炸另一邊。
+  證據(三次):① PR #29 刪 Docker,`.dockerignore`+AGENTS.md 領地表殘留(#30 補)。② PR #32:of-content-engine 刪「暫存區」`WORKER_RUN` 欄,炸 feed-collector 的必要欄 fail-fast 守衛(跨 repo,3h 後才被告警發現)。③ PR #35 移除 `ERROR_MSG` 時漏掉 4 行 `下游 worker` 文件殘留,#36 才補。
+  失效條件:同類掃除連續兩次(含跨 repo)零殘留 → 降回 Observation;若 owner 把「退役先跨 repo grep consumer + docs」寫進全域 feedback 記憶足夠覆蓋 → 本條移除。
 - 下游接手方 = 人工選片 + of-content-engine 的 GAS onEdit(worker 已退役);GAS 認 STATUS 欄、搬整列,**不寫回暫存區任何欄** → 無欄位衝突。本服務寫入欄位前仍先確認下游現況。
 - 與姊妹專案 short-video-bot 的 ID 前綴**不同**(本支 `tt_` vs 另一支 `tiktok_`)。
   若未來兩支共用同一張表,需先統一前綴規則,否則去重失效。**目前各自獨立表 → 無衝突**。
