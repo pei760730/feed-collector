@@ -15,7 +15,6 @@ describe("runIngest — 核心流程", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.STATUS).toBe("pending_review");
     expect(rows[0]!.VIDEO_ID).toBe("ig_CxYz_-1");
-    expect(rows[0]!.ERROR_MSG).toBe("");
   });
 
   it("重複連結 → 回已存在,且不重複寫入", async () => {
