@@ -31,7 +31,9 @@ export function createBot(config: Config, storage: Storage, hooks?: BotHooks): T
         return next();
       }
       // 丟棄但不報錯:drain 會照常 ack 推進 offset,避免垃圾訊息每輪重領卡住佇列。
-      logger.warn(`擋下非授權來源:chat=${chatId} from=${fromId}(不在 ALLOWED_CHAT_IDS)`);
+      // id 遮蔽:public repo 的 Actions log 是公開的,不外洩陌生人原始 Telegram id(去識別),
+      // 只留末 2 碼供粗略辨識重複來源。
+      logger.warn(`擋下非授權來源:chat=${maskId(chatId)} from=${maskId(fromId)}(不在 ALLOWED_CHAT_IDS)`);
       return Promise.resolve();
     });
   }
@@ -109,4 +111,11 @@ export function createBot(config: Config, storage: Storage, hooks?: BotHooks): T
 
 function errText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** 遮蔽 Telegram id:回傳末 2 碼(不足 3 碼全遮),不外洩完整 id 到公開 log。 */
+function maskId(id: number | undefined): string {
+  if (id == null) return "none";
+  const s = String(Math.abs(id));
+  return s.length <= 2 ? "**" : `***${s.slice(-2)}`;
 }
