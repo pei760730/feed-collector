@@ -19,7 +19,7 @@ Codex 是這個 repo 的**工程管線 agent**:在 branch 上做可審查的 cod
 - `CLAUDE.md` / `README.md` / `AGENTS.md`(描述工程行為的段落可改,但**治理規則 / 設計判斷不是 Codex 的決定**)
 
 **預設不碰(Claude Code / Owner 的領域):**
-- **schema / 契約判斷**:`src/types.ts` 的 7 欄、`STATUS` 取值、`ERROR_MSG`/`WORKER_RUN` 對下游的意義 —— 改欄 = 改契約,要 feed-collector + 下游 engine 兩 repo 一起,Owner 決定
+- **schema / 契約判斷**:`src/types.ts` 的 6 欄、`STATUS` 取值、`ERROR_MSG` 對下游的意義 —— 改欄 = 改契約,要 feed-collector + 下游 engine 兩 repo 一起,Owner 決定
 - **自我進化迴圈架構** /「成效表」設計 / first-principles 判斷
 - **跨 repo 協調**:下游 worker 介面、SA 分享、GitHub secrets
 - **live Google Sheet 的實際寫入操作**(用真憑證 append / 刪列)
@@ -38,7 +38,7 @@ Codex 是這個 repo 的**工程管線 agent**:在 branch 上做可審查的 cod
 2. **未經 Owner 明確同意不 commit / push / 開 PR**:在 branch 做完、跑驗證、**先報告**、等 yes。
 3. **只改被要求的部分**,不順手改旁邊 code / 註解 / 欄位。
 4. **修 bug 前先想**能不能用 schema / 設定 / 型別 / test 擋掉,寫新 code 是最後手段。
-5. **`ERROR_MSG` / `WORKER_RUN` 是下游 worker 的欄**:本服務 append 留空、**永不覆寫**。改這個 = 改契約 = Owner 決定。
+5. **`ERROR_MSG` 是下游 worker 的欄**:本服務 append 留空、**永不覆寫**。改這個 = 改契約 = Owner 決定。(`WORKER_RUN` 已於 2026-07-05 隨 worker 退役從契約移除。)
 6. **不可逆動作**(刪分頁、改表頭、清表、真寫 Sheet、改 CI、force push)先講方案、等明確 yes。
 
 ## 分支 / PR

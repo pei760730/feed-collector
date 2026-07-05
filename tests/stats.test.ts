@@ -16,7 +16,6 @@ function row(p: string, videoId: string, status: string, date: string): StagingR
     VIDEO_ID: videoId,
     STATUS: status,
     ERROR_MSG: "",
-    WORKER_RUN: "",
   };
 }
 
