@@ -10,7 +10,8 @@
 2. **未經明確同意不 commit / push / 開 PR**。在 branch 做完、跑 `npm test` + `npm run typecheck`、先報告,等 yes。
 3. **只改被要求的部分**,不順手改旁邊的 code/欄位。
 4. **抽取/清理規則以 collector-core canonical 為對齊基準**(2026-06-27 起已兩輪對齊;接 core 是既定路線),改規則先補 / 改 `tests/`,別憑印象重寫跑掉行為。(舊「n8n regex 1:1」紅線已退役 2026-07-03:行為早非 n8n 1:1。)
-5. **`ERROR_MSG` 是下游 worker 的欄**:本服務 append 一律留空,**永不覆寫**既有列。(`WORKER_RUN` 欄已於 2026-07-05 隨 worker 退役從契約移除。)
+
+> **worker 退役後記(2026-07-05)**:暫存區原本帶兩個「下游 worker 專用欄」`WORKER_RUN` / `ERROR_MSG`(本服務只 append 留空、永不覆寫)。worker 已退役 → 兩欄皆無讀寫方,已從契約移除(6→5 欄)。現存 5 欄全由本服務自寫,無下游專用欄。
 
 ## 第二層:資料地圖
 
@@ -72,7 +73,7 @@
 |---|---|---|
 | 分支前綴 | `claude/*` | `codex/*`(PR 標題 `[codex]`,draft PR → `gh pr ready` → Owner merge) |
 | 程式 | 設計判斷、跨 repo 協調、Sheet 操作 | `src/`(pipeline/storage/bot/utils/messages)、`tests/`、CI、依賴 |
-| 治理 / schema | `CLAUDE.md`、`src/types.ts` 6 欄契約、`ERROR_MSG` 語意、迴圈架構 | 被要求才碰,且只改「描述工程行為」段落 |
+| 治理 / schema | `CLAUDE.md`、`src/types.ts` 5 欄契約、迴圈架構 | 被要求才碰,且只改「描述工程行為」段落 |
 
 - **跨領地改動**:在 PR 說明原因、人工 review merge。揭露 ≠ 授權。
 - **Claude 自律**:不主動重構 Codex 領地;審 Codex PR 只驗不重寫。

@@ -15,7 +15,6 @@ function row(p: string, videoId: string, status: string, date: string): StagingR
     CLEAN_URL: `https://x/${videoId}`,
     VIDEO_ID: videoId,
     STATUS: status,
-    ERROR_MSG: "",
   };
 }
 
