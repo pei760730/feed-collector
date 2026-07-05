@@ -277,14 +277,23 @@ export class GoogleSheetsStorage implements Storage {
 
   async append(row: StagingRow): Promise<void> {
     const layout = await this.layout();
-    await withRetry("append", () =>
-      this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.sheetId,
-        range: this.range(`A1:${colLetter(layout.width - 1)}`),
-        valueInputOption: "RAW",
-        insertDataOption: "INSERT_ROWS",
-        requestBody: { values: [placeRow(row as unknown as Record<string, unknown>, STAGING_COLUMNS, layout)] },
-      }),
+    // 冪等護欄:append 是本 storage 唯一「非冪等」寫入。若寫入 server 端已提交但回應遺失
+    // (isTransient:'Premature close' / ECONNRESET…),withRetry 會重打 → 永久重複列。
+    // 重試前先用 VIDEO_ID 重查一次(findByVideoId 每次都 fresh 讀資料、非凍結快照);已落地就
+    // 視為完成、不重打。VIDEO_ID 涵蓋 raw_*(raw_<ts> 在 extract 階段即固定、本次 append 內不變)。
+    // 唯一無法護欄的情形 = VIDEO_ID 為空(無穩定鍵):此時查不到、照常重試(退回原行為)。
+    const videoId = row.VIDEO_ID.trim();
+    await withRetry(
+      "append",
+      () =>
+        this.sheets.spreadsheets.values.append({
+          spreadsheetId: this.sheetId,
+          range: this.range(`A1:${colLetter(layout.width - 1)}`),
+          valueInputOption: "RAW",
+          insertDataOption: "INSERT_ROWS",
+          requestBody: { values: [placeRow(row as unknown as Record<string, unknown>, STAGING_COLUMNS, layout)] },
+        }),
+      { alreadyDone: videoId ? async () => (await this.findByVideoId(videoId)) !== null : undefined },
     );
   }
 }
