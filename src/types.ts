@@ -3,7 +3,7 @@
  * 改欄位只改這裡;storage / messages / handlers 都引用這份。
  *
  * 與姊妹專案 short-video-bot 的差異:
- * - 7 欄(不含 SENDER / NOTE / AGE / icon),含下游 worker 用的 ERROR_MSG / WORKER_RUN。
+ * - 6 欄(不含 SENDER / NOTE / AGE / icon),含下游 worker 用的 ERROR_MSG。
  * - STATUS 只有 pending_review / unsupported(狀態流程,給下游 worker 接手)。
  * - 平台前綴 tt_(非 tiktok_),抓不到為 raw_<ts>。
  */
@@ -32,7 +32,7 @@ export type Status = (typeof STATUS)[keyof typeof STATUS];
 
 /**
  * 「暫存區」一列 —— 欄位順序即 Sheet 表頭順序,不要改順序。
- * ERROR_MSG / WORKER_RUN 保留給下游 worker,本服務 append 時一律留空、不覆寫。
+ * ERROR_MSG 保留給下游 worker,本服務 append 時一律留空、不覆寫。
  */
 export interface StagingRow {
   PLATFORM: string;
@@ -41,7 +41,6 @@ export interface StagingRow {
   VIDEO_ID: string;
   STATUS: string; // pending_review | unsupported
   ERROR_MSG: string; // 下游 worker 用,本服務留空
-  WORKER_RUN: string; // 下游 worker 用,本服務留空
 }
 
 /** 「暫存區」表頭順序(SSOT)。 */
@@ -52,5 +51,4 @@ export const STAGING_COLUMNS: (keyof StagingRow)[] = [
   "VIDEO_ID",
   "STATUS",
   "ERROR_MSG",
-  "WORKER_RUN",
 ];

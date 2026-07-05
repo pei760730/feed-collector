@@ -88,7 +88,6 @@ export async function runIngest(
     VIDEO_ID: ex.videoId,
     STATUS: ex.unsupported ? STATUS.UNSUPPORTED : STATUS.PENDING_REVIEW,
     ERROR_MSG: "", // 下游 worker 用,留空
-    WORKER_RUN: "", // 下游 worker 用,留空
   };
 
   return serialize(async () => {
