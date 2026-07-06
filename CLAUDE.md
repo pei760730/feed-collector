@@ -46,7 +46,7 @@
 - 使用者 **Kai / Pei**([pei760730](https://github.com/pei760730)),回覆繁體中文、短句直接。
 - 技術棧已定案:Node.js + TypeScript、telegraf、googleapis、dayjs、vitest。儲存 Google Sheets。
 - 部署:**GitHub Actions cron drain(預設)** —— `collect.yml` 設 `*/5` `npm run drain`,但
-  **GitHub 對 public repo 的高頻排程會大幅節流,實際約每 2–3h 才觸發一次(非每 5 分)**。
+  **GitHub 對 public repo 的高頻排程會大幅節流,實測間隔約 1–2.5h(非每 5 分;與 collect.yml 註解同源)**。
   這不影響正確性:間隔只需明顯 < Telegram ~24h 留存,2–3h 遠小於 24h;且每次 run 都
   `getUpdates` 撈乾全部 pending,漏跑幾次也自癒。public repo Actions 免費 ≈ $0。
   **不要在本機 Docker/WSL2 跑常駐**
