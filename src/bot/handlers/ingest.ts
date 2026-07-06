@@ -8,10 +8,14 @@
  *     raw_*(unsupported) → 直接存(不查重)
  *     可解析       → 查重 → 重複:跳過不存 / 新的:pending_review 存
  */
-import { parseMessage, NoUrlError } from "../../pipeline/parse.js";
-import { cleanUrl, hasShortHost } from "../../pipeline/cleanUrl.js";
+import {
+  parseMessage,
+  NoUrlError,
+  cleanUrl,
+  hasShortHost,
+  expandShortUrl,
+} from "@pei760730/collector-core";
 import { extractVideoId } from "../../pipeline/extractVideoId.js";
-import { expandShortUrl } from "../../utils/expandUrl.js";
 import { todayTaipei } from "../../utils/date.js";
 import { STATUS, type StagingRow } from "../../types.js";
 import type { Storage } from "../../storage/Storage.js";
@@ -64,7 +68,7 @@ export async function runIngest(
   // Parse —— 抽第一個網址;沒有 → 格式錯誤
   let rawUrl: string;
   try {
-    rawUrl = parseMessage(input.text).rawUrl;
+    rawUrl = parseMessage({ text: input.text }).rawUrl;
   } catch (err) {
     if (err instanceof NoUrlError) return { reply: formatErrorMsg() };
     throw err;
@@ -77,14 +81,14 @@ export async function runIngest(
     if (expanded !== rawUrl) rawUrl = expanded;
   }
 
-  // Clean → Extract(extract 內含 FB 轉址解開,並可能回寫 CLEAN_URL)
+  // Clean → Extract(FB 轉址解開在 core cleanUrl 層,cleaned.cleanUrl 即最終 CLEAN_URL)
   const cleaned = cleanUrl(rawUrl);
-  const ex = extractVideoId(cleaned, now);
+  const ex = extractVideoId(cleaned.cleanUrl, now);
 
   const row: StagingRow = {
     PLATFORM: ex.platform,
     DATE: todayTaipei(now()),
-    CLEAN_URL: ex.cleanUrl,
+    CLEAN_URL: cleaned.cleanUrl,
     VIDEO_ID: ex.videoId,
     STATUS: ex.unsupported ? STATUS.UNSUPPORTED : STATUS.PENDING_REVIEW,
   };

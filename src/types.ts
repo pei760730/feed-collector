@@ -5,7 +5,7 @@
  * 與姊妹專案 short-video-bot 的差異:
  * - 5 欄(不含 SENDER / NOTE / AGE / icon);worker 退役後不再帶下游專用欄。
  * - STATUS 只有 pending_review / unsupported(可解析待選 / 無法解析待人工看)。
- * - 平台前綴 tt_(非 tiktok_),抓不到為 raw_<ts>。
+ * - 平台前綴 tt_/dy_ 等(非 core 的 tiktok_/douyin_;對照表在 pipeline/extractVideoId.ts),抓不到為 raw_<ts>。
  */
 
 /** 支援平台(寫進 PLATFORM 欄的顯示名)。 */
@@ -17,6 +17,7 @@ export type Platform =
   | "X"
   | "小紅書"
   | "Threads"
+  | "抖音" // 2026-07-06 隨接 core 新支援(dy_ 前綴)
   | "Other";
 
 /**

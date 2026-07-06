@@ -9,7 +9,7 @@
 1. **機密永不進 git**:`TELEGRAM_BOT_TOKEN`、`service_account.json`、`.env`。`.gitignore` 已擋,有人提議 commit 立刻拒絕。
 2. **未經明確同意不 commit / push / 開 PR**。在 branch 做完、跑 `npm test` + `npm run typecheck`、先報告,等 yes。
 3. **只改被要求的部分**,不順手改旁邊的 code/欄位。
-4. **抽取/清理規則以 collector-core canonical 為對齊基準**(2026-06-27 起已兩輪對齊;接 core 是既定路線),改規則先補 / 改 `tests/`,別憑印象重寫跑掉行為。(舊「n8n regex 1:1」紅線已退役 2026-07-03:行為早非 n8n 1:1。)
+4. **抽取/清理規則 SSOT = collector-core,2026-07-06 已接通(終審 #8)**:pipeline 本體全 import core,本地只剩前綴 adapter(`pipeline/extractVideoId.ts`)。改規則去 core 改(先過 core tests + dedupConformance),adapter 只管前綴/XHS 小寫/raw_ 語意。
 
 > **worker 退役後記(2026-07-05)**:暫存區原本帶兩個「下游 worker 專用欄」`WORKER_RUN` / `ERROR_MSG`(本服務只 append 留空、永不覆寫)。worker 已退役 → 兩欄皆無讀寫方,已從契約移除(6→5 欄)。現存 5 欄全由本服務自寫,無下游專用欄。
 
@@ -18,9 +18,8 @@
 | 找什麼 | 去哪 |
 |---|---|
 | 「暫存區」欄位 / schema(SSOT) | `src/types.ts`:`StagingRow` / `STAGING_COLUMNS` / `STATUS` |
-| 抽第一個網址(不抓備註) | `src/pipeline/parse.ts` |
-| 清網址(追蹤參數 / hash / 尾斜線 / 行動版→桌面版 host 正規化) | `src/pipeline/cleanUrl.ts` |
-| **FB 轉址解開 + 判平台 + 抽 ID(核心)** | `src/pipeline/extractVideoId.ts` |
+| 抽網址/清網址(含 FB 轉址解開)/判平台/各平台抽取規則 | `@pei760730/collector-core`(SSOT;2026-07-06 接通,終審 #8) |
+| **前綴 adapter(core `tiktok_`→本表 `tt_`、XHS 小寫收斂、raw_ 語意)** | `src/pipeline/extractVideoId.ts`(薄層,改抽取規則去 core) |
 | 去重 / 寫入介面 | `src/storage/Storage.ts` |
 | Google Sheets 實作 | `src/storage/googleSheets.ts` |
 | 測試用記憶體 storage | `src/storage/memory.ts` |
@@ -32,7 +31,7 @@
 
 ## 第三層:技術不變式
 
-- **pipeline 全純函式**:parse / cleanUrl / extractVideoId 無副作用、無網路;I/O 隔在 storage + handler。
+- **pipeline 全純函式**(來自 core + 本地 adapter):無副作用、無網路;I/O 隔在 storage + handler。VIDEO_ID 前綴 = 本表歷史前綴(tt_/dy_ 等,非 core 的 tiktok_/douyin_),對照表在 adapter。
 - **時區固定 `Asia/Taipei`**;DATE 格式 `YYYY/M/D`(不補零)。
 - **寫入一律 RAW**(不用 USER_ENTERED),避免 video ID / 開頭 0 被吃成數字。
 - **訊息純文字**,不用 MarkdownV2(舊版跳脫漏字會發送失敗)。
