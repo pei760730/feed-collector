@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { cleanUrl } from "@pei760730/collector-core";
 import { extractVideoId } from "../src/pipeline/extractVideoId.js";
 
 const FIXED = () => 1_700_000_000_000;
@@ -190,20 +191,21 @@ describe("extractVideoId — Facebook 各形態", () => {
   });
 });
 
-describe("extractVideoId — FB 轉址解開(步驟 0)", () => {
-  it("l.facebook.com/l.php?u=… → 還原內層 IG 並回寫 CLEAN_URL", () => {
+describe("FB 轉址解開(已上移 core cleanUrl 層;此處驗 clean→extract 全鏈等價)", () => {
+  it("l.facebook.com/l.php?u=… → cleanUrl 還原內層 IG,extract 照常抽 id", () => {
     const inner = "https://www.instagram.com/reel/CxYz_-1";
     const wrapped = `https://l.facebook.com/l.php?u=${encodeURIComponent(inner)}&fbclid=abc`;
-    const r = extractVideoId(wrapped);
+    const cleaned = cleanUrl(wrapped);
+    expect(cleaned.cleanUrl).toBe(inner);
+    const r = extractVideoId(cleaned.cleanUrl);
     expect(r.platform).toBe("Instagram");
     expect(r.videoId).toBe("ig_CxYz_-1");
-    expect(r.cleanUrl).toBe(inner);
   });
 
   it("l.facebook.com 還原內層 TikTok", () => {
     const inner = "https://www.tiktok.com/@u/video/7234567890";
     const wrapped = `https://l.facebook.com/l.php?u=${encodeURIComponent(inner)}`;
-    expect(extractVideoId(wrapped).videoId).toBe("tt_7234567890");
+    expect(extractVideoId(cleanUrl(wrapped).cleanUrl).videoId).toBe("tt_7234567890");
   });
 });
 

@@ -11,7 +11,7 @@
  */
 import { google, type sheets_v4 } from "googleapis";
 // 退避重試(只對暫態錯誤:429/5xx + 網路型)抽進 collector-core,三 collector 共用同一份。
-import { withRetry } from "@pei760730/collector-core";
+import { withRetry, cleanUrl as coreCleanUrl } from "@pei760730/collector-core";
 import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
@@ -258,7 +258,10 @@ export class GoogleSheetsStorage implements Storage {
         }),
       );
       const values = res.data.values ?? [];
-      return values.some((row) => String(row?.[0] ?? "").trim() === key);
+      // 抗規則漂移:歷史列是「當年的清理規則」寫的,規則升級後同連結可能字串不同 →
+      // 比對時兩側都過現行 core cleanUrl 再比(冪等:已乾淨的字串不變),舊列不因升級漏擋。
+      const normKey = coreCleanUrl(key).cleanUrl;
+      return values.some((row) => coreCleanUrl(String(row?.[0] ?? "").trim()).cleanUrl === normKey);
     } catch (err) {
       logger.warn(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄`, err);
       this.onGateSkip?.(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄(擋回流 gate 失效,照常收錄)`);
