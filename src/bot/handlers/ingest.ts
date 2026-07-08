@@ -13,7 +13,7 @@ import {
   NoUrlError,
   cleanUrl,
   hasShortHost,
-  expandShortUrl,
+  expandShortUrl as coreExpandShortUrl,
 } from "@pei760730/collector-core";
 import { extractVideoId } from "../../pipeline/extractVideoId.js";
 import { todayTaipei } from "../../utils/date.js";
@@ -44,6 +44,8 @@ function serialize<T>(fn: () => Promise<T>): Promise<T> {
 export interface IngestDeps {
   storage: Storage;
   expandShortUrls: boolean;
+  /** 短網址展開器。預設 = core expandShortUrl;測試注入 fake 即可驗 true 分支不打網路。 */
+  expandShortUrl?: (url: string) => Promise<string>;
   now?: () => number;
   /**
    * 寫入暫存區失敗(可重試)時呼叫 —— 給 drain 模式用的 side-channel。
@@ -77,7 +79,8 @@ export async function runIngest(
   // 短網址展開(opt-in,且只對已知短網址服務發 HEAD,別追每條連結)。在 clean 前展開,
   // 平台判斷吃真實網址。
   if (deps.expandShortUrls && hasShortHost(rawUrl)) {
-    const expanded = await expandShortUrl(rawUrl);
+    const expand = deps.expandShortUrl ?? coreExpandShortUrl;
+    const expanded = await expand(rawUrl);
     if (expanded !== rawUrl) rawUrl = expanded;
   }
 
