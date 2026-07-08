@@ -4,7 +4,7 @@
  * 對映用純函式,免 mock googleapis。
  */
 import { describe, it, expect } from "vitest";
-import { resolveHeaderIndexes, placeRow, readNamedRow } from "../src/storage/googleSheets.js";
+import { resolveHeaderIndexes, placeRow, readNamedRow } from "@pei760730/collector-core";
 import { STAGING_COLUMNS } from "../src/types.js";
 
 const CANONICAL = ["PLATFORM", "DATE", "CLEAN_URL", "VIDEO_ID", "STATUS"];

@@ -10,8 +10,19 @@
  * (那才會錯欄毀資料,寧可停下等人對齊)。`findApprovedByUrl` 早已是具名解析,本次對齊其餘讀寫。
  */
 import { google, type sheets_v4 } from "googleapis";
-// 退避重試(只對暫態錯誤:429/5xx + 網路型)抽進 collector-core,三 collector 共用同一份。
-import { withRetry, cleanUrl as coreCleanUrl } from "@pei760730/collector-core";
+// 退避重試(只對暫態錯誤:429/5xx + 網路型)+ 表頭具名解析工具(colLetter / resolveHeaderIndexes /
+// placeRow / readNamedRow / HeaderLayout),三 collector 逐字相同,已抽進 collector-core(SSoT)。
+// feed 只留自家 schema 常數(STAGING_COLUMNS / 總表 URL 欄名)。
+import {
+  withRetry,
+  cleanUrl as coreCleanUrl,
+  colLetter,
+  resolveHeaderIndexes,
+  placeRow,
+  readNamedRow,
+  type HeaderLayout,
+  type GoogleServiceAccountCredentials,
+} from "@pei760730/collector-core";
 import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
@@ -21,7 +32,7 @@ import { logger } from "../utils/logger.js";
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
 export interface GoogleSheetsOptions {
-  credentials: { client_email: string; private_key: string };
+  credentials: GoogleServiceAccountCredentials;
   sheetId: string;
   sheetName: string;
   prodSheetName: string;
@@ -31,78 +42,6 @@ export interface GoogleSheetsOptions {
    * 由呼叫端(drain)接去 Telegram 告警。不給 = 維持原行為(只 logger.warn)。
    */
   onGateSkip?: (detail: string) => void;
-}
-
-/** 表頭解析結果:每個必要欄的 0-based 欄位索引 + 整列寬度。 */
-export interface HeaderLayout {
-  indexOf: Record<string, number>;
-  width: number;
-}
-
-/** 0-based 欄索引 → A1 欄字母(0→A, 25→Z, 26→AA)。 */
-export function colLetter(index: number): string {
-  let n = index;
-  let s = "";
-  do {
-    s = String.fromCharCode((n % 26) + 65) + s;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-  return s;
-}
-
-/**
- * 依「實際表頭」解析每個必要欄的 0-based 索引(純函式,好測)。
- * 必要欄整個缺席 → 丟錯(不錯欄寫入、不默默毀資料);順序/多餘空欄/前置欄都容忍。
- */
-export function resolveHeaderIndexes(
-  header: readonly unknown[],
-  required: readonly string[],
-  label: string,
-): HeaderLayout {
-  const cells = header.map((h) => String(h ?? "").trim());
-  const indexOf: Record<string, number> = {};
-  const missing: string[] = [];
-  for (const col of required) {
-    const idx = cells.indexOf(col);
-    if (idx < 0) missing.push(col);
-    else indexOf[col] = idx;
-  }
-  if (missing.length > 0) {
-    throw new Error(
-      `${label}表頭缺少必要欄 [${missing.join(",")}],拒絕寫入(避免錯欄毀資料)。` +
-        `現有=[${cells.join(",")}] 需要=[${required.join(",")}]。請人工對齊表頭。`,
-    );
-  }
-  return { indexOf, width: Math.max(cells.length, required.length) };
-}
-
-/** 把一列物件依解析索引排成整列寬度字串陣列(該欄外留空)。 */
-export function placeRow(
-  row: Record<string, unknown>,
-  columns: readonly string[],
-  layout: HeaderLayout,
-): string[] {
-  const cells: string[] = new Array<string>(layout.width).fill("");
-  for (const col of columns) {
-    const idx = layout.indexOf[col];
-    if (idx === undefined) continue; // resolve 階段已保證存在;防禦性
-    cells[idx] = String(row[col] ?? "");
-  }
-  return cells;
-}
-
-/** 反向:依解析索引,把實際列的 cell 取回具名欄物件。 */
-export function readNamedRow(
-  cells: readonly string[],
-  columns: readonly string[],
-  layout: HeaderLayout,
-): Record<string, string> {
-  const obj: Record<string, string> = {};
-  for (const col of columns) {
-    const idx = layout.indexOf[col];
-    obj[col] = idx === undefined ? "" : String(cells[idx] ?? "");
-  }
-  return obj;
 }
 
 const LAST_COL = colLetter(STAGING_COLUMNS.length - 1);
