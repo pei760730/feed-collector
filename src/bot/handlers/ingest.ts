@@ -96,11 +96,15 @@ export async function runIngest(
   return serialize(async () => {
     // unsupported(raw_*)→ 直接存,不查重(規格 §4.4)
     if (!ex.unsupported) {
-      const hit = await deps.storage.findByVideoId(ex.videoId);
+      // 查 in-memory 去重索引 / 總表集合(單輪 drain 各只讀一次全表後快取,取代逐訊息全表掃描)。
+      const hit = (await deps.storage.videoIdIndex()).get(ex.videoId.trim());
       if (hit) return { reply: duplicateMsg(hit.row) };
 
-      const approvedHit = await deps.storage.findApprovedByUrl(row.CLEAN_URL);
-      if (approvedHit) return { reply: approvedDuplicateMsg(row.CLEAN_URL) };
+      // normKey 已是 core cleanUrl 輸出(row.CLEAN_URL 來自上面的 cleanUrl(rawUrl));
+      // approvedUrlSet 內值同樣過 core cleanUrl,兩側對齊。
+      if ((await deps.storage.approvedUrlSet()).has(row.CLEAN_URL)) {
+        return { reply: approvedDuplicateMsg(row.CLEAN_URL) };
+      }
     }
 
     try {

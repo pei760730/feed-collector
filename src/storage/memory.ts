@@ -28,20 +28,33 @@ export class MemoryStorage implements Storage {
     void STAGING_COLUMNS; // 記憶體版固定 schema,無需建表頭
   }
 
+  async videoIdIndex(): Promise<Map<string, DuplicateHit>> {
+    // 記憶體版每次現建(rows 是 append 直推的活陣列,不需快取;同輪稍後重複自然看得到)。
+    const index = new Map<string, DuplicateHit>();
+    for (let i = 0; i < this.rows.length; i++) {
+      const r = this.rows[i]!;
+      const key = r.VIDEO_ID.trim();
+      if (!key) continue; // 空 key 不索引(對齊「空 key 不去重」)
+      if (!index.has(key)) index.set(key, { row: r, rowNumber: i + 2 });
+    }
+    return index;
+  }
+
   async findByVideoId(videoId: string): Promise<DuplicateHit | null> {
     const key = videoId.trim();
     if (!key) return null; // 空 key 不去重
-    for (let i = 0; i < this.rows.length; i++) {
-      const r = this.rows[i]!;
-      if (r.VIDEO_ID.trim() === key) return { row: r, rowNumber: i + 2 };
-    }
-    return null;
+    return (await this.videoIdIndex()).get(key) ?? null;
+  }
+
+  async approvedUrlSet(): Promise<Set<string>> {
+    if (!this.approvedUrlColumnAvailable) return new Set(); // 欄不可用 → fail-soft 空集
+    return new Set(this.approvedUrls);
   }
 
   async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
     const key = cleanUrl.trim();
-    if (!key || !this.approvedUrlColumnAvailable) return false;
-    return this.approvedUrls.has(key);
+    if (!key) return false;
+    return (await this.approvedUrlSet()).has(key);
   }
 
   async append(row: StagingRow): Promise<void> {

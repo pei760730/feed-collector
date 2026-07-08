@@ -115,6 +115,9 @@ export class GoogleSheetsStorage implements Storage {
   private readonly prodSheetName: string;
   private readonly onGateSkip?: (detail: string) => void;
   private layoutCache?: HeaderLayout;
+  // 單輪 drain 的去重索引/總表集合快取(每實例一份;drain 每輪新建實例)。
+  private videoIdCache?: Map<string, DuplicateHit>;
+  private approvedCache?: Set<string>;
 
   constructor(opts: GoogleSheetsOptions) {
     this.sheetId = opts.sheetId;
@@ -212,20 +215,40 @@ export class GoogleSheetsStorage implements Storage {
     return out;
   }
 
+  /**
+   * 暫存區去重索引:第一次讀全表建 Map(一次 values.get),之後直接回快取(O(1)、無網路)。
+   * append 成功後會把新 key 併入這份快取(見 append 尾端),故同輪稍後的重複也擋得到。
+   * 空 VIDEO_ID 不索引(對齊 findByVideoId「空 key 不去重」);同 key 保留首筆(列號最小)。
+   */
+  async videoIdIndex(): Promise<Map<string, DuplicateHit>> {
+    if (this.videoIdCache) return this.videoIdCache;
+    const layout = await this.layout();
+    const index = new Map<string, DuplicateHit>();
+    for (const { rowNumber, cells } of await this.rawRows(layout)) {
+      const row = readNamedRow(cells, STAGING_COLUMNS, layout) as unknown as StagingRow;
+      const key = row.VIDEO_ID.trim();
+      if (!key) continue;
+      if (!index.has(key)) index.set(key, { row, rowNumber });
+    }
+    this.videoIdCache = index;
+    return index;
+  }
+
   async findByVideoId(videoId: string): Promise<DuplicateHit | null> {
     const key = videoId.trim();
     if (!key) return null; // 空 key 不去重
-    const layout = await this.layout();
-    for (const { rowNumber, cells } of await this.rawRows(layout)) {
-      const row = readNamedRow(cells, STAGING_COLUMNS, layout) as unknown as StagingRow;
-      if (row.VIDEO_ID.trim() === key) return { row, rowNumber };
-    }
-    return null;
+    return (await this.videoIdIndex()).get(key) ?? null;
   }
 
-  async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
-    const key = cleanUrl.trim();
-    if (!key) return false;
+  /**
+   * 總表已收錄 URL 集合:第一次讀總表 URL 欄建 Set(讀表頭 + 讀整欄),之後回快取(O(1))。
+   * 值為 core cleanUrl 正規化後字串——抗規則漂移:歷史列是「當年的清理規則」寫的,規則升級後
+   * 同連結字串可能不同 → 存入前兩側都過現行 core cleanUrl(冪等:已乾淨的不變),舊列不漏擋。
+   * fail-soft:讀不到總表 / 找不到 URL 欄 → 回空 Set(照常收錄)並觸發 onGateSkip;
+   * 失敗「不快取」(清掉才回),讓下一筆可再試(維持「gate 掛了也不放棄」的降級)。
+   */
+  async approvedUrlSet(): Promise<Set<string>> {
+    if (this.approvedCache) return this.approvedCache;
 
     let header: string[];
     try {
@@ -239,14 +262,14 @@ export class GoogleSheetsStorage implements Storage {
     } catch (err) {
       logger.warn(`總表去重跳過:無法讀取分頁 ${this.prodSheetName}`, err);
       this.onGateSkip?.(`總表去重跳過:無法讀取分頁 ${this.prodSheetName}(擋回流 gate 失效,照常收錄)`);
-      return false;
+      return new Set();
     }
 
     const urlColIndex = header.findIndex((cell) => cell === PROD_URL_HEADER);
     if (urlColIndex < 0) {
       logger.warn(`總表去重跳過:${this.prodSheetName} 找不到「${PROD_URL_HEADER}」欄`);
       this.onGateSkip?.(`總表去重跳過:${this.prodSheetName} 找不到「${PROD_URL_HEADER}」欄(擋回流 gate 失效,照常收錄)`);
-      return false;
+      return new Set();
     }
 
     const urlCol = colLetter(urlColIndex);
@@ -258,15 +281,26 @@ export class GoogleSheetsStorage implements Storage {
         }),
       );
       const values = res.data.values ?? [];
-      // 抗規則漂移:歷史列是「當年的清理規則」寫的,規則升級後同連結可能字串不同 →
-      // 比對時兩側都過現行 core cleanUrl 再比(冪等:已乾淨的字串不變),舊列不因升級漏擋。
-      const normKey = coreCleanUrl(key).cleanUrl;
-      return values.some((row) => coreCleanUrl(String(row?.[0] ?? "").trim()).cleanUrl === normKey);
+      const set = new Set<string>();
+      for (const row of values) {
+        const raw = String(row?.[0] ?? "").trim();
+        if (!raw) continue;
+        set.add(coreCleanUrl(raw).cleanUrl);
+      }
+      this.approvedCache = set;
+      return set;
     } catch (err) {
       logger.warn(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄`, err);
       this.onGateSkip?.(`總表去重跳過:無法讀取 ${this.prodSheetName} 的「${PROD_URL_HEADER}」欄(擋回流 gate 失效,照常收錄)`);
-      return false;
+      return new Set();
     }
+  }
+
+  async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
+    const key = cleanUrl.trim();
+    if (!key) return false;
+    const normKey = coreCleanUrl(key).cleanUrl;
+    return (await this.approvedUrlSet()).has(normKey);
   }
 
   async stats(opts: { recentLimit: number; nowMs: number }): Promise<StatsSummary> {
@@ -277,15 +311,40 @@ export class GoogleSheetsStorage implements Storage {
     return computeStats(rows, opts);
   }
 
+  /** 讀「當前」暫存區既有 VIDEO_ID 集合(fresh 全表讀,非快照)。append 冪等護欄用。 */
+  private async freshVideoIds(layout: HeaderLayout): Promise<Set<string>> {
+    const set = new Set<string>();
+    for (const { cells } of await this.rawRows(layout)) {
+      const id = (readNamedRow(cells, STAGING_COLUMNS, layout) as unknown as StagingRow).VIDEO_ID.trim();
+      if (id) set.add(id);
+    }
+    return set;
+  }
+
   async append(row: StagingRow): Promise<void> {
     const layout = await this.layout();
     // 冪等護欄:append 是本 storage 唯一「非冪等」寫入。若寫入 server 端已提交但回應遺失
     // (isTransient:'Premature close' / ECONNRESET…),withRetry 會重打 → 永久重複列。
-    // 重試前先用 VIDEO_ID 重查一次(findByVideoId 每次都 fresh 讀資料、非凍結快照);已落地就
+    // 重試前先問 alreadyDone:這 VIDEO_ID 是否已在表上(fresh 讀、非凍結快照);已落地就
     // 視為完成、不重打。VIDEO_ID 涵蓋 raw_*(raw_<ts> 在 extract 階段即固定、本次 append 內不變)。
     // 唯一無法護欄的情形 = VIDEO_ID 為空(無穩定鍵):此時查不到、照常重試(退回原行為)。
+    //
+    // 讀放大防護:護欄的「既有 VIDEO_ID 集合」在單次 append 的重試窗內只讀一次後快取——
+    // 連環 429 / 暫態網路錯會逼出多次重試,舊版每次重試都做一次全表讀 → 故障時讀放大成 N 倍。
+    // 查詢「成功」快取重用;查詢「本身失敗」不快取(throw 出去由 withRetry 吞掉照常重試),
+    // 維持「護欄掛了也不放棄寫入」的降級。重試窗短,期間集合視為不變是安全的。
+    // 注意:這是每次 append 各自 fresh 的一次性快取,與實例級 videoIdCache(去重索引)無關,
+    // 護欄不可讀凍結的去重快取,否則偵測不到「上次寫成功但回應遺失」。
     const videoId = row.VIDEO_ID.trim();
-    await withRetry(
+    let keySetCache: Promise<Set<string>> | undefined;
+    const existingIds = (): Promise<Set<string>> => {
+      const pending = (keySetCache ??= this.freshVideoIds(layout).catch((err) => {
+        if (keySetCache === pending) keySetCache = undefined; // 不快取失敗:下次重試重問
+        throw err;
+      }));
+      return pending;
+    };
+    const res = (await withRetry(
       "append",
       () =>
         this.sheets.spreadsheets.values.append({
@@ -295,7 +354,13 @@ export class GoogleSheetsStorage implements Storage {
           insertDataOption: "INSERT_ROWS",
           requestBody: { values: [placeRow(row as unknown as Record<string, unknown>, STAGING_COLUMNS, layout)] },
         }),
-      { alreadyDone: videoId ? async () => (await this.findByVideoId(videoId)) !== null : undefined },
-    );
+      { alreadyDone: videoId ? async () => (await existingIds()).has(videoId) : undefined },
+    )) as { data?: { updates?: { updatedRange?: string } } };
+    // 寫入成功 → 併入去重快取,讓同輪稍後的重複 VIDEO_ID 不必重讀全表也擋得到。
+    if (videoId && this.videoIdCache && !this.videoIdCache.has(videoId)) {
+      const a1 = (res?.data?.updates?.updatedRange ?? "").split("!").pop() ?? "";
+      const m = a1.match(/\d+/);
+      this.videoIdCache.set(videoId, { row, rowNumber: m ? Number(m[0]) : 0 });
+    }
   }
 }

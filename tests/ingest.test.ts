@@ -74,7 +74,9 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      videoIdIndex: async () => new Map(),
       findApprovedByUrl: async () => false,
+      approvedUrlSet: async () => new Set(),
       stats: async () => ({
         total: 0,
         byPlatform: {},
@@ -99,7 +101,9 @@ describe("runIngest — 核心流程", () => {
     const failing: Storage = {
       ensureHeader: async () => {},
       findByVideoId: async () => null,
+      videoIdIndex: async () => new Map(),
       findApprovedByUrl: async () => false,
+      approvedUrlSet: async () => new Set(),
       stats: async () => ({
         total: 0,
         byPlatform: {},
