@@ -93,6 +93,19 @@ describe("extractVideoId — 各平台正常抽取", () => {
       extractVideoId("https://www.xiaohongshu.com/discovery/item/64ab12cd").videoId,
     ).toBe("xhs_64ab12cd");
   });
+
+  it("抖音 /video/<id> → dy_ 前綴(2026-07-06 新支援)", () => {
+    const r = extractVideoId("https://www.douyin.com/video/7234567890123456789");
+    expect(r.platform).toBe("抖音");
+    expect(r.videoId).toBe("dy_7234567890123456789");
+    expect(r.unsupported).toBe(false);
+  });
+
+  it("抖音 query 注入造不出假 id → unsupported(退 raw_,對齊 TikTok path-only)", () => {
+    const r = extractVideoId("https://www.douyin.com/user/x?redirect=/video/9999999999", FIXED);
+    expect(r.platform).toBe("抖音");
+    expect(r.unsupported).toBe(true);
+  });
 });
 
 describe("extractVideoId — 2026-06-27 對齊(pathname 化 + YT live + XHS hex)", () => {

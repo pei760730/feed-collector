@@ -12,6 +12,7 @@ const PLATFORM_ICON: Record<string, string> = {
   X: "✖️",
   小紅書: "📕",
   Threads: "🧵",
+  抖音: "🎶",
   Other: "🔗",
 };
 

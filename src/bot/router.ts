@@ -52,7 +52,7 @@ export function createBot(config: Config, storage: Storage, hooks?: BotHooks): T
   );
   bot.help((ctx) =>
     ctx.reply(
-      "貼影片連結即收錄;/stats 看暫存區統計。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads。",
+      "貼影片連結即收錄;/stats 看暫存區統計。支援:Instagram / TikTok / YouTube / Facebook / X / 小紅書 / Threads / 抖音。",
     ),
   );
 
