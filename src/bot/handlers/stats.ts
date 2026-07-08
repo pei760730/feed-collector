@@ -2,19 +2,8 @@
  * /stats handler —— 暫存區彙總(純文字,不依賴 Telegraf,好測試)。
  * 總筆數 + 各平台 + 各狀態 + 本週/本月新增 + 最近 N 筆。
  */
+import { PLATFORM_ICON } from "@pei760730/collector-core";
 import type { Storage } from "../../storage/Storage.js";
-
-const PLATFORM_ICON: Record<string, string> = {
-  Instagram: "📸",
-  TikTok: "🎵",
-  YouTube: "▶️",
-  Facebook: "📘",
-  X: "✖️",
-  小紅書: "📕",
-  Threads: "🧵",
-  抖音: "🎶",
-  Other: "🔗",
-};
 
 export interface StatsDeps {
   storage: Storage;
@@ -42,7 +31,9 @@ export async function runStats(deps: StatsDeps): Promise<string> {
   const platformLines = capList(s.byPlatform);
   const statusLines = capList(s.byStatus);
   const recentLines = s.recent.map((r) => {
-    const icon = PLATFORM_ICON[r.PLATFORM] ?? "•";
+    // core 的 PLATFORM_ICON 以顯示名為鍵(feed PLATFORM 欄存顯示名);feed 專屬的 "Other"
+    // 不在 core union → 索引回 undefined,退回 "•"(對齊 core iconFor 對未知碼的預設)。
+    const icon = PLATFORM_ICON[r.PLATFORM as keyof typeof PLATFORM_ICON] ?? "•";
     return `  ${icon} ${r.VIDEO_ID}(${r.STATUS},${r.DATE})`;
   });
 

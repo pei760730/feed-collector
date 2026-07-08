@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { GoogleSheetsStorage } from "../src/storage/googleSheets.js";
-import type { HeaderLayout } from "../src/storage/googleSheets.js";
+import type { HeaderLayout } from "@pei760730/collector-core";
 import type { StagingRow } from "../src/types.js";
 
 const LAYOUT: HeaderLayout = {
