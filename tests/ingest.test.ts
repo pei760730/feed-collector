@@ -135,6 +135,40 @@ describe("runIngest — 核心流程", () => {
     expect(persistFailed).toBe(false);
   });
 
+  it("expandShortUrls:true + 注入 fake 展開器 → 用展開後的長鏈 clean/去重/存(不打網路)", async () => {
+    const s = new MemoryStorage();
+    const fakeExpand = async (u: string) =>
+      u.includes("vt.tiktok")
+        ? "https://www.tiktok.com/@x/video/7999"
+        : u;
+    const r = await runIngest(
+      { text: "https://vt.tiktok.com/ZSabc123/" },
+      { storage: s, expandShortUrls: true, expandShortUrl: fakeExpand, now: FIXED },
+    );
+    expect(r.reply).toContain("待處理");
+    const rows = s.all();
+    expect(rows).toHaveLength(1);
+    // 存的是展開後的長鏈,而非原短鏈
+    expect(rows[0]!.PLATFORM).toBe("TikTok");
+    expect(rows[0]!.CLEAN_URL).toBe("https://www.tiktok.com/@x/video/7999");
+    expect(rows[0]!.VIDEO_ID).toBe("tt_7999");
+  });
+
+  it("expandShortUrls:false → 不展開(false 分支照舊,短鏈原樣進 pipeline)", async () => {
+    const s = new MemoryStorage();
+    let called = false;
+    const spyExpand = async (u: string) => {
+      called = true;
+      return u;
+    };
+    await runIngest(
+      { text: "https://vt.tiktok.com/ZSabc123/" },
+      { storage: s, expandShortUrls: false, expandShortUrl: spyExpand, now: FIXED },
+    );
+    // gate 關閉 → 展開器根本不該被呼叫
+    expect(called).toBe(false);
+  });
+
   it("FB 轉址 → 還原內層平台並寫入", async () => {
     const s = new MemoryStorage();
     const inner = "https://www.instagram.com/reel/CxYz_-1";
