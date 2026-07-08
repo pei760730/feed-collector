@@ -66,4 +66,13 @@ describe("runStats — 訊息格式", () => {
     expect(reply).toContain("pending_review:2");
     expect(reply).toContain("ig_b"); // 最近筆有列出
   });
+
+  it("Other 桶(不在 core PLATFORM_ICON)最近筆退回 🔗 圖示", async () => {
+    const reply = await runStats({
+      storage: new MemoryStorage([row("Other", "raw_x", "unsupported", TODAY)]),
+      now: () => NOW,
+    });
+    expect(reply).toContain("🔗 raw_x");
+    expect(reply).not.toContain("• raw_x"); // v0.3.0 退回 "•" 的回歸防護
+  });
 });

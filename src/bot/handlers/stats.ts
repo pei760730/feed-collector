@@ -32,8 +32,9 @@ export async function runStats(deps: StatsDeps): Promise<string> {
   const statusLines = capList(s.byStatus);
   const recentLines = s.recent.map((r) => {
     // core 的 PLATFORM_ICON 以顯示名為鍵(feed PLATFORM 欄存顯示名);feed 專屬的 "Other"
-    // 不在 core union → 索引回 undefined,退回 "•"(對齊 core iconFor 對未知碼的預設)。
-    const icon = PLATFORM_ICON[r.PLATFORM as keyof typeof PLATFORM_ICON] ?? "•";
+    // 不在 core union(core 只有 "Unknown"→❓,無 "Other" 鍵)→ 索引回 undefined,退回 🔗
+    // (還原 v0.3.0 採用前 feed 對 Other 桶的顯示;此 fallback 為 feed 專屬)。
+    const icon = PLATFORM_ICON[r.PLATFORM as keyof typeof PLATFORM_ICON] ?? "🔗";
     return `  ${icon} ${r.VIDEO_ID}(${r.STATUS},${r.DATE})`;
   });
 
