@@ -40,13 +40,10 @@ const feedKey = (url: string): string => {
   return r.unsupported ? "PATH" : r.videoId;
 };
 
-/** feed 不支援抖音(無此平台)→ 純抖音案例 skip(已知差異)。 */
-const isDouyinOnly = (urls: string[]): boolean => urls.every((u) => /douyin\.com/i.test(u));
-
+// 2026-07-06 feed 已接抖音(extractVideoId 映 dy_),抖音向量不再 skip、實跑守門。
 describe("voc 去重契約(feed 模型):same_group 收斂同一 key", () => {
   for (const g of vectors.same_group) {
-    const skip = isDouyinOnly(g.urls);
-    it.skipIf(skip)(`「${g.name}」`, () => {
+    it(`「${g.name}」`, () => {
       const keys = new Set(g.urls.map(feedKey));
       expect(keys.size).toBe(1);
       // 真正收斂(抽到 id),而非「全部 unsupported 湊巧相等」。
