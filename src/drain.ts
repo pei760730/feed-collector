@@ -10,21 +10,31 @@
  * 寫入失敗(可重試)= 紅線:runIngest 內 append 失敗會觸發 onPersistError → 旗標翻 true,
  * 該筆「沒持久化」不可 ack。drain 停在當前 offset、結束本輪,留給下次 cron 重領(去重擋重複)。
  * 絕不把沒寫成功的訊息默默 ack 掉(= 靜默丟資料,CLAUDE.md 紅線)。
+ *
+ * 迴圈本體(getUpdates→handleUpdate→ack;abort 語意)與 exit code 對映抽在 drainLoop.ts,
+ * 可注入假 bot 測試(本檔是 entry,import 即執行,測試載不進來)。
  */
 import { createBot } from "./bot/router.js";
 import { loadConfig } from "./config.js";
+import {
+  drainUpdates,
+  exitCodeFor,
+  makeGateAlerter,
+  type DrainResult,
+  type PersistFlag,
+} from "./drainLoop.js";
 import { GoogleSheetsStorage } from "./storage/googleSheets.js";
 import { MemoryStorage } from "./storage/memory.js";
 import type { Storage } from "./storage/Storage.js";
 import { logger } from "./utils/logger.js";
 
-async function main(): Promise<void> {
+async function main(): Promise<DrainResult> {
   const config = loadConfig();
   // DATE 一律 Asia/Taipei(utils/date.ts 寫死),不靠 process.env.TZ。
 
   // 總表 gate 失效告警:先宣告、bot 建立後才綁定(gate 只在 handleUpdate 期間觸發,屆時 bot 已在)。
-  // 每輪 drain 至多告警一次(一輪失效通常整輪失效,逐訊息轟炸沒有資訊量)。
   let sendGateAlert: (detail: string) => void = () => {};
+  let flushGateAlert: () => Promise<void> = async () => {};
 
   let storage: Storage;
   if (config.storage === "memory") {
@@ -42,58 +52,40 @@ async function main(): Promise<void> {
   }
   await storage.ensureHeader();
 
-  // persistFailed:某筆寫入暫存區失敗(可重試)的 side-channel 旗標。每筆處理前歸零,
+  // persist.failed:某筆寫入暫存區失敗(可重試)的 side-channel 旗標。每筆處理前歸零,
   // handleUpdate 內若觸發 onPersistError 會翻 true → 該筆「沒持久化」,不能 ack。
-  let persistFailed = false;
+  const persist: PersistFlag = { failed: false };
   const bot = createBot(config, storage, {
     onPersistError: () => {
-      persistFailed = true;
+      persist.failed = true;
     },
   });
-  let gateAlerted = false;
-  sendGateAlert = (detail) => {
-    if (gateAlerted || !config.errorChatId) return;
-    gateAlerted = true;
-    void bot.telegram
-      .sendMessage(config.errorChatId, `🐞 ${detail}`)
-      .catch((e) => logger.error("通知 error chat 失敗", e));
-  };
+  const gateAlerter = makeGateAlerter(config.errorChatId, (chatId, text) =>
+    bot.telegram.sendMessage(chatId, text),
+  );
+  sendGateAlert = gateAlerter.send;
+  flushGateAlert = gateAlerter.flush;
   bot.botInfo = await bot.telegram.getMe(); // handleUpdate 解析群組 /command@botname 需要
   await bot.telegram.deleteWebhook({ drop_pending_updates: false }); // 清殘留 webhook,保留待領更新
 
-  let offset = 0;
-  let processed = 0;
-  let aborted = false;
-  outer: for (;;) {
-    const updates = await bot.telegram.getUpdates(0, 100, offset, undefined);
-    if (updates.length === 0) break;
-    for (const u of updates) {
-      persistFailed = false;
-      try {
-        await bot.handleUpdate(u);
-      } catch (err) {
-        // 解析/路由層的非預期例外(非寫入失敗):重領也沒用,記錄後跳過、照常 ack。
-        logger.error(`處理 update ${u.update_id} 例外(跳過,下次不重領)`, err);
-      }
-      if (persistFailed) {
-        // 寫入失敗(可重試):不前進 offset、結束整個 drain。前面成功段下次 cron 第一次
-        // getUpdates(offset) 會 ack;這筆與之後的會被重領,靠 storage VIDEO_ID 去重。
-        // 這樣才真 at-least-once,不會把沒寫成功的訊息默默 ack 掉(CLAUDE.md 紅線)。
-        logger.error(`update ${u.update_id} 寫入暫存區失敗 → 停在此 offset,結束本輪讓下次 cron 重領`);
-        aborted = true;
-        break outer;
-      }
-      offset = u.update_id + 1; // 帶到下一輪 getUpdates 即 ack 本批
-      processed += 1;
-    }
-  }
-  // 正常結束:迴圈終止前那次「空批」getUpdates(offset) 已 ack 最後一批,不需額外補 ack。
-  // 中止結束:刻意不 ack 未處理段(含失敗那筆),留給下次 cron 重領。
+  const result = await drainUpdates(bot, persist);
 
-  logger.info(`drain ${aborted ? "中止(寫入失敗,部分未處理)" : "完成"}:已處理 ${processed} 筆更新`);
+  // exit 前先等 gate 告警送完:bootstrap 是 process.exit(exitCodeFor),會砍在途 I/O;
+  // 舊寫法 fire-and-forget(void sendMessage)在這裡就會被砍掉、告警靜默消失。
+  await flushGateAlert();
+
+  logger.info(
+    `drain ${result.aborted ? "中止(寫入失敗,部分未處理)" : "完成"}:已處理 ${result.processed} 筆更新`,
+  );
+  return result;
 }
 
-main().catch((err) => {
-  logger.error("drain 失敗", err);
-  process.exit(1);
-});
+main()
+  // 顯式退出 + exit code 對映:aborted → exit 2(非 0)。舊版一律 exit 0 會讓 collect.yml
+  // 假綠、kai-notify(if: failure())永不觸發 —— Sheets 壞掉 + ERROR_CHAT_ID 沒設時
+  // 就是靜默丟資料。main resolve 前已 await flushGateAlert,這裡 exit 不會截斷告警。
+  .then((result) => process.exit(exitCodeFor(result)))
+  .catch((err) => {
+    logger.error("drain 失敗", err);
+    process.exit(1);
+  });

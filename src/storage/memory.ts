@@ -1,6 +1,7 @@
 /**
  * 記憶體版 Storage —— 給單元測試與本機 dry-run 用,不碰網路。
  */
+import { cleanUrl as coreCleanUrl } from "@pei760730/collector-core";
 import type { Storage, DuplicateHit, StatsSummary } from "./Storage.js";
 import type { StagingRow } from "../types.js";
 import { STAGING_COLUMNS } from "../types.js";
@@ -18,8 +19,14 @@ export class MemoryStorage implements Storage {
 
   constructor(seed: StagingRow[] = [], opts: MemoryStorageOptions = {}) {
     this.rows = [...seed];
+    // 值過 core cleanUrl 正規化(冪等):對齊 Storage 介面契約與 GoogleSheetsStorage 實作
+    // (googleSheets approvedUrlSet 存入前過 coreCleanUrl)。只 trim 會與真實作分叉,
+    // 用 MemoryStorage 跑的 gate 測試會假陰性(seed 髒連結 → 真實作擋、記憶體版放行)。
     this.approvedUrls = new Set(
-      [...(opts.approvedUrls ?? [])].map((url) => url.trim()).filter((url) => url !== ""),
+      [...(opts.approvedUrls ?? [])]
+        .map((url) => url.trim())
+        .filter((url) => url !== "")
+        .map((url) => coreCleanUrl(url).cleanUrl),
     );
     this.approvedUrlColumnAvailable = opts.approvedUrlColumnAvailable ?? true;
   }
@@ -54,7 +61,8 @@ export class MemoryStorage implements Storage {
   async findApprovedByUrl(cleanUrl: string): Promise<boolean> {
     const key = cleanUrl.trim();
     if (!key) return false;
-    return (await this.approvedUrlSet()).has(key);
+    // 查詢鍵同樣過 coreCleanUrl(對齊 googleSheets.findApprovedByUrl 的 normKey;冪等)。
+    return (await this.approvedUrlSet()).has(coreCleanUrl(key).cleanUrl);
   }
 
   async append(row: StagingRow): Promise<void> {
