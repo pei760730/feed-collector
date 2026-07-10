@@ -7,7 +7,8 @@
  * 分群意圖不漂移」——任何人改 feed extractVideoId 而與 canonical 分叉,這裡先紅。
  *
  *   翻譯:feed 的 `unsupported`(raw_) ⟺ canonical 的 `path`(都是「抽不到 id、不靠 id 收斂」)。
- *   例外:feed **不支援抖音**(無此平台),純抖音的 same_group 案例 skip(已知差異,非漂移)。
+ *   抖音:2026-07-06 feed 已接抖音(extractVideoId 映 `dy_`),抖音向量不再 skip、實跑守門
+ *   (見下方 describe 前註;舊「feed 不支援抖音、same_group skip」例外已失效)。
  *
  * 對手檔 = canonical `@pei760730/collector-core` 隨包發布的 contracts/voc/dedup_vectors.json
  * (core 是 TS pipeline SSOT;tbvoc/sv-bot/clip 共跑同一份)。改去重規則 → 先改 core canonical → bump core tag。

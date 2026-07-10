@@ -54,5 +54,7 @@ export async function runStats(deps: StatsDeps): Promise<string> {
   ].join("\n");
 
   // Telegram 單則上限 4096;保險再硬切。
-  return out.length > 3900 ? out.slice(0, 3900) + "\n…(已截斷)" : out;
+  // 用 code point 切,避免 String.slice 把 emoji 的 surrogate pair 切一半吐出壞字
+  // (孤兒 surrogate 會讓 Telegram sendMessage 回 400)。svb stats 同款。
+  return out.length > 3900 ? [...out].slice(0, 3900).join("") + "\n…(已截斷)" : out;
 }

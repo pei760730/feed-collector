@@ -83,7 +83,9 @@ export function createBot(config: Config, storage: Storage, hooks?: BotHooks): T
   // /stats —— 暫存區彙總。註冊在 message handler 之前,/stats 才會被指令攔截。
   bot.command("stats", async (ctx) => {
     try {
-      await ctx.reply(await runStats({ storage })).catch(() => {});
+      // reply 包 catch:使用者封鎖 bot / chat 失效時 reply 丟例外,不該把「發送失敗」誤報成
+      // 「取統計失敗」還驚動 error chat;但也不全吞 —— 至少留 warn,發送壞掉才查得到。
+      await ctx.reply(await runStats({ storage })).catch((e) => logger.warn("/stats 回覆發送失敗", e));
     } catch (err) {
       logger.error("/stats 失敗", err);
       await ctx.reply("❌ 取統計失敗。").catch(() => {});

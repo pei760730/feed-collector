@@ -16,6 +16,8 @@ import {
   type GoogleServiceAccountCredentials,
 } from "@pei760730/collector-core";
 
+import { logger } from "./utils/logger.js";
+
 export { chatIdsEnv };
 
 // override:true —— .env 蓋過系統既有環境變數,避免殘留舊/打錯的 token。
@@ -71,6 +73,11 @@ export function loadConfig(): Config {
     throw new Error(
       "STORAGE=sheets 但未設 ALLOWED_CHAT_IDS:正式寫表必須限定來源 chat id(逗號分隔純數字),否則公開後任何人都能灌你的暫存區",
     );
+  }
+  // sheets 模式沒設 ERROR_CHAT_ID:gate 告警/notifyError 全程 no-op,寫入失敗只剩 Actions 紅燈
+  // (drain aborted → exit 2)可見。不 fail-fast(告警管道是選配),但開機明講,別默默沒告警。
+  if (storage === "sheets" && cached.errorChatId === "") {
+    logger.warn("ERROR_CHAT_ID 未設,寫入失敗將無 Telegram 告警(只剩 collect.yml 紅燈/exit code)");
   }
   return cached;
 }
