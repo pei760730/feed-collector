@@ -169,6 +169,40 @@ describe("runIngest — 核心流程", () => {
     expect(called).toBe(false);
   });
 
+  it("備註超長被 core 截斷 → 成功收錄回覆帶截斷提醒", async () => {
+    const s = new MemoryStorage();
+    const longNote = "x".repeat(2100); // > core MAX_NOTE_LEN(2000)
+    const r = await runIngest(
+      { text: `https://www.instagram.com/reel/CxYz_-1 ${longNote}` },
+      deps(s),
+    );
+    expect(r.reply).toContain("待處理"); // 照常收錄
+    expect(r.reply).toContain("已截斷"); // 但要明講截斷
+    expect(s.all()).toHaveLength(1);
+  });
+
+  it("備註超長 + unsupported(raw_)→ 回覆也帶截斷提醒(免得人工審核對半截值困惑)", async () => {
+    const s = new MemoryStorage();
+    const longNote = "x".repeat(2100);
+    const r = await runIngest(
+      { text: `https://example.com/foo ${longNote}` },
+      deps(s),
+    );
+    expect(r.reply).toContain("unsupported"); // 照常走 raw_ 收錄
+    expect(r.reply).toContain("已截斷");
+    expect(s.all()).toHaveLength(1);
+  });
+
+  it("正常長度訊息 → 回覆不帶截斷提醒", async () => {
+    const s = new MemoryStorage();
+    const r = await runIngest(
+      { text: "https://www.instagram.com/reel/CxYz_-1 正常備註" },
+      deps(s),
+    );
+    expect(r.reply).toContain("待處理");
+    expect(r.reply).not.toContain("已截斷");
+  });
+
   it("FB 轉址 → 還原內層平台並寫入", async () => {
     const s = new MemoryStorage();
     const inner = "https://www.instagram.com/reel/CxYz_-1";

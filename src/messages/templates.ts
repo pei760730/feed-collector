@@ -15,25 +15,33 @@ export function formatErrorMsg(): string {
   ].join("\n");
 }
 
+// core 在解析邊界截斷超長連結/備註(fanout-safety)。收錄回覆要明講,
+// 別讓分享者以為存進暫存區的是完整值。
+const TRUNCATED_LINE = "⚠️ 原訊息的連結或備註過長,已截斷處理(存的可能不是完整值)。";
+
 /** 新收錄(pending_review)成功。 */
-export function savedMsg(row: StagingRow): string {
-  return [
+export function savedMsg(row: StagingRow, opts?: { truncated?: boolean }): string {
+  const lines = [
     "✅ 已收進暫存區,待處理。",
     `平台:${row.PLATFORM}`,
     `VIDEO_ID:${row.VIDEO_ID}`,
     `狀態:${row.STATUS}`,
     `日期:${row.DATE}`,
-  ].join("\n");
+  ];
+  if (opts?.truncated) lines.push(TRUNCATED_LINE);
+  return lines.join("\n");
 }
 
 /** 無法解析(unsupported)但仍存檔。 */
-export function unsupportedMsg(row: StagingRow): string {
-  return [
+export function unsupportedMsg(row: StagingRow, opts?: { truncated?: boolean }): string {
+  const lines = [
     "⚠️ 這個連結抓不到 video ID,已以 unsupported 收錄(待人工看)。",
     `平台:${row.PLATFORM}`,
     `連結:${row.CLEAN_URL}`,
     `狀態:${row.STATUS}`,
-  ].join("\n");
+  ];
+  if (opts?.truncated) lines.push(TRUNCATED_LINE);
+  return lines.join("\n");
 }
 
 export function duplicateMsg(existing: StagingRow): string {

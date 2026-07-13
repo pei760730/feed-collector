@@ -69,8 +69,13 @@ export async function runIngest(
 
   // Parse —— 抽第一個網址;沒有 → 格式錯誤
   let rawUrl: string;
+  let truncated: boolean;
   try {
-    rawUrl = parseMessage({ text: input.text }).rawUrl;
+    const parsed = parseMessage({ text: input.text });
+    rawUrl = parsed.rawUrl;
+    // core 在解析邊界截斷超長連結/備註(fanout-safety)→ 收錄回覆要明講,
+    // 別讓分享者以為存進暫存區的是完整值。
+    truncated = parsed.truncated;
   } catch (err) {
     if (err instanceof NoUrlError) return { reply: formatErrorMsg() };
     throw err;
@@ -124,6 +129,12 @@ export async function runIngest(
     }
 
     logger.info(`收錄 ${row.PLATFORM} ${row.VIDEO_ID} (${row.STATUS})`);
-    return { reply: ex.unsupported ? unsupportedMsg(row) : savedMsg(row) };
+    // unsupported(raw_*)也帶截斷提醒:截斷過的 URL 進 raw_ 給人工看時,
+    // 分享者當下不講,審核的人只會對著半截連結困惑。
+    return {
+      reply: ex.unsupported
+        ? unsupportedMsg(row, { truncated })
+        : savedMsg(row, { truncated }),
+    };
   });
 }
