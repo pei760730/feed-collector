@@ -44,12 +44,12 @@
 
 - 使用者 **Kai / Pei**([pei760730](https://github.com/pei760730)),回覆繁體中文、短句直接。
 - 技術棧已定案:Node.js + TypeScript、telegraf、googleapis、dayjs、vitest。儲存 Google Sheets。
-- 部署:**GitHub Actions cron drain(預設)** —— `collect.yml` 設 `*/5` `npm run drain`,但
-  **GitHub 對 public repo 的高頻排程會大幅節流,實測間隔約 1–2.5h(非每 5 分;與 collect.yml 註解同源)**。
-  這不影響正確性:間隔只需明顯 < Telegram ~24h 留存,2–3h 遠小於 24h;且每次 run 都
-  `getUpdates` 撈乾全部 pending,漏跑幾次也自癒。public repo Actions 免費 ≈ $0。
-  **不要在本機 Docker/WSL2 跑常駐**
-  (連 googleapis 帶 JWT 大封包會 `Premature close`)。Docker/webhook 部署線已於 2026-07-03 解散(常駐線從未上場);`npm run dev` = 本機 long polling,僅開發用。
+- 部署:**⚠️ 生產 drain 已移交 `pei760730/collector`(2026-07-15,#9 三併一 Phase 3)** ——
+  引擎 vendored 至該 repo `src/engines/of/`,由其 collect.yml 的 of matrix job(`OF_*` secrets)
+  排程執行;端到端驗證 run 29352425723。本 repo `collect.yml` 只剩 `workflow_dispatch`
+  純備援(同 bot 同表,緊急手動補跑一輪,行為相同),**改引擎行為請去 collector repo 改**,
+  本 repo 待 Phase 4 archive。`npm run dev` = 本機 long polling,僅開發用。
+  (**不要在本機 Docker/WSL2 跑常駐**:連 googleapis 帶 JWT 大封包會 `Premature close`。)
 - 開發指令:`npm run dev`、`npm test`、`npm run typecheck`、`npm run build`。
 
 ## 第五層:待確認(邊做邊修)

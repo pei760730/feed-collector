@@ -1,15 +1,11 @@
 name: collect
 
-# 定時把 Telegram 這段時間囤的訊息撈乾、解析、寫進「暫存區」,然後結束。
-# Telegram 只保留未領更新約 24h —— 間隔必須「明顯 < 24h」才不漏:24h 整等於零安全邊際,
-# 任何一次 run 延遲/失敗就會讓超過 24h 的訊息被 Telegram 丟掉。
-# cron 寫 */5(排程下限、free 不花錢),但 GitHub 對高頻 cron 節流:實測間隔約 1–2.5 小時。
-# 體感 = 丟連結後最慢 ~2.5h 入暫存區,仍遠 < Telegram 24h 留存,邊際充足。
-# 要立刻收就按 workflow_dispatch。
+# ⚠️ 排程已退役(2026-07-15,#9 三併一 Phase 3):of 生產 drain 已移至 collector repo
+# collect.yml 的 of matrix job(OF_* secrets,engines/of vendored 引擎;端到端驗證:
+# run 29352425723 收錄 ig_DYHSZWszCB0 pending_review 真訊息落暫存區)。本檔留
+# workflow_dispatch 當備援 —— 同一隻 bot 同一張表,緊急時手動補跑一輪,行為完全相同。
 on:
-  schedule:
-    - cron: "*/5 * * * *" # 每 5 分(UTC);實際被 GitHub 節流到 1–2.5h 一跑,見上
-  workflow_dispatch: {} # 手動補跑(要立刻收就按這個)
+  workflow_dispatch: {} # 備援手動補跑(生產排程在 collector repo)
 
 permissions:
   contents: read
