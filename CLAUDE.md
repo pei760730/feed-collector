@@ -1,3 +1,10 @@
+> # ⛔️ STOP — 這個 repo 已退役,不要在這裡動工
+>
+> 2026-07-14（#9 三併一）整包併入 **[pei760730/collector](https://github.com/pei760730/collector)**（matrix target = `of`）。
+> 本 repo 已 archive、唯讀、無排程,下面整份規則只是歷史記錄。
+>
+> **接到任何跟 of 收集有關的任務 → 去 collector repo 做，不要改這裡。**
+
 # CLAUDE.md — feed-collector 協作規則
 
 > 接手這個 repo(含 AI)先讀這份。feed-collector = Telegram 短影音收集/佇列 bot,取代舊 n8n「feed-collector」流程。
